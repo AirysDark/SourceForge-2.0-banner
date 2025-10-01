@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install-sf2-complete.sh — dual-mode + sf2-software + software-full.sh + meminfo RAM + updater
+# install-sf2-complete.sh — dual-mode + copies software-full.sh into /usr/local/share/sf2
 set -euo pipefail
 
 OWNER="${OWNER:-AirysDark}"; REPO="${REPO:-SourceForge-2.0-banner}"; BRANCH="${BRANCH:-main}"
@@ -23,31 +23,40 @@ install_file(){ # <src_rel> <dest_abs> <mode>
   src="$1"; dest="$2"; mode="$3"
   mkdir -p "$(dirname "$dest")"
   if have "$src"; then install -m "$mode" -D "./$src" "$dest"
-  else tmp="$(mktemp)"; if fetch "$src" "$tmp"; then install -m "$mode" -D "$tmp" "$dest"; fi; rm -f "$tmp"; fi
+  else tmp="$(mktemp)"; if fetch "$src" "$tmp"; then install -m "$mode" -D "$tmp" "$dest"; else echo "[SF2] WARN: Missing $src (local+remote) — skipping"; fi; rm -f "$tmp"; fi
 }
 
 install_all(){
   install_file sf2-banner /usr/local/bin/sf2-banner 755
-
-# Install the wrapper
-sudo install -m 755 ./sf2-software /usr/local/bin/sf2-software
-
-# Install the real script
-sudo install -m 755 ./software-full.sh /usr/local/share/sf2/software-full.sh
   install_file sf2-config /usr/local/bin/sf2-config 755
   install_file bin/cpu /usr/local/bin/cpu 755
   install_file bin/sf2-software /usr/local/bin/sf2-software 755
+
   for f in banner.d/10-hostname.sh banner.d/20-uptime.sh banner.d/30-ip.sh \
            banner.d/40-load.sh banner.d/50-ram.sh banner.d/60-disk.sh banner.d/70-commands.sh; do
     install_file "$f" "/usr/lib/sf2/$f" 755
   done
-  # full menu body
+
+  # Ensure full menu is installed to where wrapper expects it
+  mkdir -p /usr/local/share/sf2
+
+  # Copy from typical repo path #1
   if have usr/local/share/sf2/software-full.sh; then
     install -m 0755 -D ./usr/local/share/sf2/software-full.sh /usr/local/share/sf2/software-full.sh
-  elif [[ -n "${SF2_SOFTWARE_FULL:-}" ]]; then
-    mkdir -p /usr/local/share/sf2
-    printf "%s" "${SF2_SOFTWARE_FULL}" > /usr/local/share/sf2/software-full.sh
-    chmod 0755 /usr/local/share/sf2/software-full.sh
+
+  # Copy from typical repo path #2 (root)
+  elif have software-full.sh; then
+    install -m 0755 -D ./software-full.sh /usr/local/share/sf2/software-full.sh
+
+  # Else try fetch from GitHub path usr/local/share/sf2/software-full.sh
+  else
+    tmp="$(mktemp)"
+    if fetch usr/local/share/sf2/software-full.sh "$tmp"; then
+      install -m 0755 -D "$tmp" /usr/local/share/sf2/software-full.sh
+    else
+      echo "[SF2] WARN: software-full.sh not found locally or in repo path — you can add it later to /usr/local/share/sf2/software-full.sh"
+    fi
+    rm -f "$tmp"
   fi
 }
 
