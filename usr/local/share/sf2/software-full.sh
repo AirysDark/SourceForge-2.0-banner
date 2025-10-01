@@ -2,7 +2,6 @@
 # gitea-runner-menu.sh
 # All-in-one helper for Gitea server/runner + MySQL/MariaDB + No-IP (DDNS) + HTTPS (Nginx+Let's Encrypt) on Pi/Debian.
 set -euo pipefail
-trap 'sf2-banner >/dev/null 2>&1 || true' EXIT
 
 # --- Ensure netcat is available for network checks ---
 sudo apt-get update -y >/dev/null 2>&1 || true
@@ -359,7 +358,7 @@ dns_noip_menu(){
     echo "${C_BOX}│${C_RESET} ${C_BOLD}2)${C_RESET} Force update now                                                          "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}3)${C_RESET} Show ddclient service status                                              "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}4)${C_RESET} Uninstall No-IP (ddclient)                                                "
-    echo "${C_BOX}│${C_RESET} ${C_BOLD}b)${CRESET} Back                                                                  "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}b)${C_RESET} Back                                                                  "
     echo "${C_BOX}└──────────────────────────────────────────────────────────────────────────┘${C_RESET}"
     read -rp "$(printf "${C_ACC}> ${C_RESET}")" dch
     case "$dch" in
@@ -469,7 +468,7 @@ mysql_menu(){
     echo "${C_BOX}│${C_RESET} ${C_BOLD}3)${C_RESET} Uninstall (server/client and data)                                             "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}4)${C_RESET} Test Server connection                                                         "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}5)${C_RESET} Test Client connection                                                         "
-    echo "${C_BOX}│${C_RESET} ${C_BOLD}b)${CRESET} Back                                                                  "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}b)${C_RESET} Back                                                                  "
     echo "${C_BOX}└──────────────────────────────────────────────────────────────────────────┘${C_RESET}"
     read -rp "$(printf "${C_ACC}> ${C_RESET}")" MODE
     case "${MODE:-}" in
@@ -615,10 +614,10 @@ https_proxy_menu(){
     clear; banner "HTTPS Reverse Proxy" "Nginx + Certbot (Let's Encrypt)"
     echo "${C_BOX}┌──────────────────────────────────────────────────────────────────────────┐${C_RESET}"
     echo "${C_BOX}│${C_RESET} ${C_BOLD}1)${C_RESET} Install & configure Nginx proxy for Gitea + obtain TLS cert                "
-    echo "${C_BOX}│${CRESET} ${C_BOLD}2)${C_RESET} Force cert renewal (dry-run)                                                "
-    echo "${C_BOX}│${C_RESET} ${C_BOLD}3)${CRESET} Show Nginx status / test config                                            "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}2)${C_RESET} Force cert renewal (dry-run)                                                "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}3)${C_RESET} Show Nginx status / test config                                            "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}4)${C_RESET} Uninstall proxy config (keeps Gitea)                                         "
-    echo "${C_BOX}│${C_RESET} ${C_BOLD}b)${CRESET} Back                                                                  "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}b)${C_RESET} Back                                                                  "
     echo "${C_BOX}└──────────────────────────────────────────────────────────────────────────┘${C_RESET}"
     read -rp "$(printf "${C_ACC}> ${C_RESET}")" pick
     case "$pick" in
@@ -744,12 +743,12 @@ main_menu(){
     echo "${C_BOX}│${C_RESET} ${C_BOLD}0)${C_RESET} Install Gitea server & configs                                              "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}1)${C_RESET} Install runner                                                                "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}2)${C_RESET} Runner hook to Gitea (re-register)                                            "
-    echo "${C_BOX}│${C_RESET} ${C_BOLD}3)${CRESET} Show smoke-test workflow snippet                                                "
-    echo "${C_BOX}│${C_RESET} ${C_BOLD}4)${CRESET} Ops tools (reconfigure/update/logs/net + runner→MySQL test)                "
-    echo "${C_BOX}│${C_RESET} ${C_BOLD}5)${CRESET} DNS (No-IP via ddclient)                                                       "
-    echo "${C_BOX}│${CRESET} ${C_BOLD}6)${CRESET} Uninstall Gitea server                                                        "
-    echo "${C_BOX}│${CRESET} ${C_BOLD}7)${CRESET} Uninstall runner                                                              "
-    echo "${C_BOX}│${CRESET} ${C_BOLD}8)${CRESET} MySQL/MariaDB setup (Server/Client/Uninstall/Tests)                         "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}3)${C_RESET} Show smoke-test workflow snippet                                                "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}4)${C_RESET} Ops tools (reconfigure/update/logs/net + runner→MySQL test)                "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}5)${C_RESET} DNS (No-IP via ddclient)                                                       "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}6)${C_RESET} Uninstall Gitea server                                                        "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}7)${C_RESET} Uninstall runner                                                              "
+    echo "${C_BOX}│${C_RESET} ${C_BOLD}8)${C_RESET} MySQL/MariaDB setup (Server/Client/Uninstall/Tests)                         "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}9)${C_RESET} HTTPS reverse proxy (Nginx + Let's Encrypt)                                   "
     echo "${C_BOX}│${C_RESET} ${C_BOLD}q)${C_RESET} Quit                                                                          "
     echo "${C_BOX}└──────────────────────────────────────────────────────────────────────────┘${C_RESET}"
