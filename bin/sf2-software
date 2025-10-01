@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-FULL="/usr/local/share/sf2/software-full.sh"
-if [[ -x "$FULL" ]]; then
-  exec bash "$FULL"
-else
-  echo "[SF2] Missing: $FULL"
-  exit 1
-fi
+trap 'sf2-banner >/dev/null 2>&1 || true' EXIT
+
+echo "Software menu (placeholder)."
+read -rp "Press Enter to quit..."

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PLUGIN_DIR="/usr/lib/sf2/banner.d"
-echo "SF2 Banner Configuration"; echo "Plugins: $PLUGIN_DIR"; echo
-i=1; declare -A files
-for f in "$PLUGIN_DIR"/*.sh; do [ -e "$f" ] || continue; name="$(basename "$f")"; status="[ENABLED]"; [ ! -x "$f" ] && status="[disabled]"; printf " %2d) %s %s\n" "$i" "$name" "$status"; files[$i]="$f"; i=$((i+1)); done
-echo; read -rp "Enter number to toggle plugin (or q to quit): " choice
-if [[ "${choice:-q}" =~ ^[0-9]+$ ]] && [ -n "${files[$choice]:-}" ]; then target="${files[$choice]}"; if [ -x "$target" ]; then chmod -x "$target"; echo "→ Disabled $(basename "$target")"; else chmod +x "$target"; echo "→ Enabled $(basename "$target")"; fi; else echo "Bye."; fi
+trap 'sf2-banner >/dev/null 2>&1 || true' EXIT
+
+echo "Config menu (placeholder)."
+read -rp "Press Enter to quit..."

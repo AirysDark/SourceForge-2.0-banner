@@ -1,54 +1,49 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PLUGIN_DIR="/usr/lib/sf2/banner.d"
-COLOUR_RESET='\e[0m'
-BLUE='\e[38;5;33m'
-WHITE='\e[1m'
-
-hr() { echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"; }
-now() { date '+%H:%M - %a %d/%m/%y'; }
+hr() { printf '%s\n' "$(printf '%*s' "$(tput cols 2>/dev/null || echo 40)" '' | tr ' ' '─')"; }
 
 print_header() {
+  local datetime
+  datetime="$(date '+%H:%M - %a %d/%m/%y')"
   hr
-  echo -e " ${WHITE}SourceForge 2.0 Banner : $(now)${COLOUR_RESET}"
+  echo " SourceForge 2.0 Banner : $datetime"
   hr
 }
 
-# --update passthrough (optional)
-if [[ "${1:-}" == "--update" ]]; then
-  curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-complete.sh | sudo bash || true
-  exit 0
+print_info() {
+  echo "- Hostname: $(hostname)"
+  echo "- Uptime: $(uptime -p)"
+  ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+  echo "- LAN IP: ${ip:-N/A}"
+  echo "- Load: $(awk '{print $1, $2, $3}' /proc/loadavg)"
+  mem_total=$(free -h | awk '/Mem:/ {print $2}')
+  mem_used=$(free -h | awk '/Mem:/ {print $3}')
+  mem_perc=$(free | awk '/Mem:/ {printf "%.0f%%", $3/$2*100}')
+  echo "- RAM: $mem_used / $mem_total ($mem_perc)"
+  disk=$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')
+  echo "- Disk: $disk"
+  hr
+}
+
+print_cmds() {
+  echo
+  echo " sf2-config           : Toggle banner plugins"
+  echo " sf2-software         : Service/DB/DDNS/HTTPS menu"
+  echo " sf2-banner --update  : Refresh banner + plugins"
+  echo " htop                 : Resource monitor"
+  echo " cpu                  : CPU info & stats"
+  hr
+}
+
+if [[ \${1:-} == "--update" ]]; then
+  echo "Updating banner..."
+  git clone --depth=1 https://github.com/AirysDark/SourceForge-2.0-banner.git /tmp/sf2-banner-update
+  sudo cp -a /tmp/sf2-banner-update/* /usr/lib/sf2/ || true
+  rm -rf /tmp/sf2-banner-update
+  exec sf2-banner
 fi
 
 print_header
-
-# Run info plugins (10..60)
-if compgen -G "$PLUGIN_DIR/*.sh" > /dev/null; then
-  for script in $(ls -1 "$PLUGIN_DIR"/*.sh | sort); do
-    base="$(basename "$script")"
-    if [[ "$base" == 70-* ]]; then
-      # stop before commands block
-      break
-    fi
-    if [[ -x "$script" ]]; then
-      "$script" || echo "WARNING: plugin failed: $base" >&2
-    fi
-  done
-fi
-
-# separator between info and commands
-hr
-echo
-
-# Run commands plugin (70-commands.sh) if present
-if [ -x "$PLUGIN_DIR/70-commands.sh" ]; then
-  "$PLUGIN_DIR/70-commands.sh" || true
-else
-  echo "sf2-config           : Toggle banner plugins"
-  echo "sf2-software         : Service/DB/DDNS/HTTPS menu"
-  echo "sf2-banner --update  : Refresh banner + plugins"
-  echo "htop                 : Resource monitor"
-  echo "cpu                  : CPU info & stats"
-  echo "────────────────────────────────────"
-fi
+print_info
+print_cmds
