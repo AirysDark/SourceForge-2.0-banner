@@ -13,6 +13,8 @@ fi
 
 line; echo -e " ${WHITE}SourceForge 2.0 Banner${COLOUR_RESET}"; line
 for script in $(ls -1 "$PLUGIN_DIR"/*.sh 2>/dev/null | sort); do
-  [ -x "$script" ] && "$script" || echo "[SF2] WARNING: plugin failed: $(basename "$script")" >&2
+  if [[ -x "$script" ]]; then
+    "$script" || echo "[SF2] WARNING: plugin failed: $(basename "$script")" >&2
+  fi
 done
 line

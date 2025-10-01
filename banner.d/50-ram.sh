@@ -1,4 +1,3 @@
-sudo tee /usr/lib/sf2/banner.d/50-ram.sh >/dev/null <<'EOF'
 #!/bin/sh
 # 50-ram.sh — robust: parse /proc/meminfo (no free/awk quoting issues)
 
@@ -14,8 +13,3 @@ awk '
     }
   }
 ' /proc/meminfo
-EOF
-sudo chmod +x /usr/lib/sf2/banner.d/50-ram.sh
-
-# test it
-sf2-banner
