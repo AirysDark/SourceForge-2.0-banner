@@ -12,7 +12,6 @@ BLUE='\e[38;5;33m'
 WHITE='\e[1m'
 
 line() { echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"; }
-
 fetch_raw() { local rel="$1" dest="$2"; curl -fsSL "https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${rel}" -o "$dest"; }
 
 self_update() {

@@ -26,15 +26,37 @@ fetch() { local rel="$1" dest="$2"; curl -fsSL "$(raw "$rel")" -o "$dest"; }
 
 install_or_update() {
   mkdir -p /usr/local/bin /usr/lib/sf2/banner.d /etc/sf2 /var/lib/sf2 /run/sf2
-  fetch "sf2-banner" "/usr/local/bin/sf2-banner"
-  chmod 0755 /usr/local/bin/sf2-banner
+  # If sf2-banner present alongside this installer, prefer local copy, else fetch
+  if [ -f "./sf2-banner" ]; then
+    install -m 0755 -D "./sf2-banner" /usr/local/bin/sf2-banner
+  else
+    fetch "sf2-banner" "/usr/local/bin/sf2-banner"
+    chmod 0755 /usr/local/bin/sf2-banner
+  fi
 
-  for f in 10-hostname.sh 20-uptime.sh 30-ip.sh 40-load.sh 50-ram.sh 60-disk.sh; do
+  # If local plugins exist, install those; else fetch from GitHub
+  if [ -d "./banner.d" ]; then
+    find "./banner.d" -maxdepth 1 -type f -name "*.sh" -print0 | while IFS= read -r -d '' f; do
+      install -m 0755 -D "$f" "/usr/lib/sf2/banner.d/$(basename "$f")"
+    done
+  else
+    for f in 10-hostname.sh 20-uptime.sh 30-ip.sh 40-load.sh 50-ram.sh 60-disk.sh; do
+      tmp="$(mktemp)"
+      fetch "banner.d/${f}" "$tmp"
+      install -m 0755 -D "$tmp" "/usr/lib/sf2/banner.d/$f"
+      rm -f "$tmp"
+    done
+  fi
+
+  # If local sf2-config exists, install; else fetch
+  if [ -f "./sf2-config" ]; then
+    install -m 0755 -D "./sf2-config" /usr/local/bin/sf2-config
+  else
     tmp="$(mktemp)"
-    fetch "banner.d/${f}" "$tmp"
-    install -m 0755 -D "$tmp" "/usr/lib/sf2/banner.d/$f"
+    fetch "sf2-config" "$tmp" || true
+    if [ -s "$tmp" ]; then install -m 0755 -D "$tmp" /usr/local/bin/sf2-config; fi
     rm -f "$tmp"
-  done
+  fi
 }
 
 install_motd() {
@@ -76,6 +98,7 @@ main() {
 
   echo "[SF2] Test run:"
   /usr/local/bin/sf2-banner || true
+  echo "[SF2] Done."
 }
 
 main "$@"
