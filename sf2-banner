@@ -1,12 +1,58 @@
 #!/usr/bin/env bash
+# sf2-banner — plugin-based SourceForge 2.0 banner with --update & diagnostics
+set -euo pipefail
+
+OWNER="${OWNER:-AirysDark}"
+REPO="${REPO:-SourceForge-2.0-banner}"
+BRANCH="${BRANCH:-main}"
+PLUGIN_DIR="/usr/lib/sf2/banner.d"
+
 COLOUR_RESET='\e[0m'
 BLUE='\e[38;5;33m'
 WHITE='\e[1m'
+
 line() { echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"; }
+
+fetch_raw() { local rel="$1" dest="$2"; curl -fsSL "https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${rel}" -o "$dest"; }
+
+self_update() {
+  command -v curl >/dev/null 2>&1 || { echo "[SF2] curl required for --update"; exit 1; }
+  echo "[SF2] Updating from ${OWNER}/${REPO}@${BRANCH}…"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  fetch_raw "sf2-banner" "$tmp/sf2-banner"
+  install -m 0755 -D "$tmp/sf2-banner" /usr/local/bin/sf2-banner
+
+  mkdir -p "$PLUGIN_DIR"
+  for f in 10-hostname.sh 20-uptime.sh 30-ip.sh 40-load.sh 50-ram.sh 60-disk.sh; do
+    fetch_raw "banner.d/${f}" "$tmp/$f"
+    install -m 0755 -D "$tmp/$f" "$PLUGIN_DIR/$f"
+  done
+  echo "[SF2] Update complete."
+}
+
+if [[ "${1:-}" = "--update" ]]; then
+  self_update
+  exit 0
+fi
+
 line
 echo -e " ${WHITE}SourceForge 2.0 Banner${COLOUR_RESET}"
 line
-for script in /usr/lib/sf2/banner.d/*.sh; do
-  [ -x "$script" ] && "$script"
-done
+
+if [[ -d "$PLUGIN_DIR" ]]; then
+  for script in $(ls -1 "$PLUGIN_DIR"/*.sh 2>/dev/null | sort); do
+    if [[ -x "$script" ]]; then
+      if ! "$script"; then
+        echo "[SF2] WARNING: plugin failed: $(basename "$script")" >&2
+      fi
+    else
+      echo "[SF2] NOTE: plugin not executable: $(basename "$script")" >&2
+    fi
+  done
+else
+  echo "[SF2] (no plugins found in $PLUGIN_DIR)"
+fi
+
 line
+exit 0
