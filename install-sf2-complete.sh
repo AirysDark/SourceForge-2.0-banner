@@ -1,25 +1,81 @@
 #!/usr/bin/env bash
-# install-sf2-complete.sh — includes RAM plugin using /proc/meminfo
+# install-sf2-complete.sh — dual-mode (local or GitHub) + meminfo RAM plugin
 set -euo pipefail
+
+OWNER="${OWNER:-AirysDark}"
+REPO="${REPO:-SourceForge-2.0-banner}"
+BRANCH="${BRANCH:-main}"
+
+DO_UPDATE="no"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --update) DO_UPDATE="yes"; shift;;
+    *) break;;
+  esac
+done
+
 require_root() { [[ $EUID -eq 0 ]] || { echo "Run with sudo/root"; exit 1; }; }
 require_root
-mkdir -p /usr/local/bin /usr/lib/sf2/banner.d /etc/sf2 /var/lib/sf2 /run/sf2
 
-install -m 0755 -D ./sf2-banner /usr/local/bin/sf2-banner
-install -m 0755 -D ./sf2-config /usr/local/bin/sf2-config
-for f in ./banner.d/*.sh; do install -m 0755 -D "$f" "/usr/lib/sf2/banner.d/$(basename "$f")"; done
-install -m 0755 -D ./bin/cpu /usr/local/bin/cpu
+raw() { echo "https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/$1"; }
+fetch() { curl -fsSL "$(raw "$1")" -o "$2"; }
 
-mkdir -p /etc/update-motd.d
-cat >/etc/update-motd.d/00-sf2-banner <<'EOF'
+have_local() { [ -f "./$1" ]; }
+
+install_file() {
+  # install_file <src_rel> <dest_abs> <mode>
+  local src_rel="$1" dest="$2" mode="$3"
+  mkdir -p "$(dirname "$dest")"
+  if have_local "$src_rel"; then
+    install -m "$mode" -D "./$src_rel" "$dest"
+  else
+    tmp="$(mktemp)"
+    if fetch "$src_rel" "$tmp"; then
+      install -m "$mode" -D "$tmp" "$dest"
+    else
+      echo "[SF2] WARN: Missing $src_rel (local+remote) — skipping"
+    fi
+    rm -f "$tmp"
+  fi
+}
+
+install_all() {
+  install_file sf2-banner           /usr/local/bin/sf2-banner 755
+  install_file sf2-config           /usr/local/bin/sf2-config 755
+  install_file bin/cpu              /usr/local/bin/cpu 755
+
+  for f in banner.d/10-hostname.sh \
+           banner.d/20-uptime.sh \
+           banner.d/30-ip.sh \
+           banner.d/40-load.sh \
+           banner.d/50-ram.sh \
+           banner.d/60-disk.sh \
+           banner.d/70-commands.sh; do
+    install_file "$f" "/usr/lib/sf2/$f" 755
+  done
+}
+
+install_motd() {
+  mkdir -p /etc/update-motd.d
+  cat >/etc/update-motd.d/00-sf2-banner <<'EOF'
 #!/bin/sh
 [ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
 EOF
-chmod +x /etc/update-motd.d/00-sf2-banner
+  chmod +x /etc/update-motd.d/00-sf2-banner
+}
 
-# Disable other MOTD snippets so SF2 is the only one
-find /etc/update-motd.d -maxdepth 1 -type f ! -name '00-sf2-banner' -exec chmod -x {} \; 2>/dev/null || true
+disable_others() {
+  find /etc/update-motd.d -maxdepth 1 -type f ! -name '00-sf2-banner' -exec chmod -x {} \; 2>/dev/null || true
+}
 
-echo "[SF2] Test run:"
-/usr/local/bin/sf2-banner || true
-echo "[SF2] Done."
+main() {
+  install_all
+  if [[ "$DO_UPDATE" != "yes" ]]; then
+    install_motd
+    disable_others
+  fi
+  echo "[SF2] Test run:"
+  /usr/local/bin/sf2-banner || true
+  echo "[SF2] Done."
+}
+main "$@"
