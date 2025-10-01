@@ -7,6 +7,8 @@ if supports_256; then
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
   C_HEAD_TX=$'\e[38;5;195m'     # light cyan-white
   C_ACC=$'\e[38;5;81m'          # cyan
+  C_WHITE=$'\e[97m'
+  C_BUL=$'\e[97m'
   C_SEP=$'\e[38;5;24m'          # deep blue for lines
   C_LABEL=$'\e[1m'              # bold
   C_VAL=$'\e[0m'                # normal
@@ -14,6 +16,8 @@ else
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
   C_HEAD_TX=$'\e[96m'
   C_ACC=$'\e[36m'
+  C_WHITE=$'\e[97m'
+  C_BUL=$'\e[97m'
   C_SEP=$'\e[34m'
   C_LABEL=$'\e[1m'
   C_VAL=$'\e[0m'
