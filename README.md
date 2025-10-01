@@ -2,14 +2,13 @@
 - All DietPi branding fully swapped to SourceForge 2.0 (SF2).
 - Paths redirected to /usr/lib/sf2, /etc/sf2, /var/lib/sf2, /run/sf2.
 - New **plugin banner system**: /usr/lib/sf2/banner.d/*.sh modules.
-- Master launcher: /usr/local/bin/sf2-banner.
+- Master launcher: /usr/local/bin/sf2-banner
+  
+uninstall
 ```Bash
-curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-banner.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/uninstall-sf2.sh | sudo bash
 ```
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-banner-override.sh | sudo bash
-```
+install
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-complete.sh | sudo bash
 ```
