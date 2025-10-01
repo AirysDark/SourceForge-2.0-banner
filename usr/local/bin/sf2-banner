@@ -1,0 +1,15 @@
+#!/bin/bash
+# SF2 Banner - Plugin based
+COLOUR_RESET='\e[0m'
+BLUE='\e[38;5;33m'
+WHITE='\e[1m'
+
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+echo -e " ${WHITE}SourceForge 2.0 Banner${COLOUR_RESET}"
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+
+for script in /usr/lib/sf2/banner.d/*.sh; do
+    [ -x "$script" ] && $script
+done
+
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
