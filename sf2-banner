@@ -2,7 +2,15 @@
 set -euo pipefail
 PLUGIN_DIR="/usr/lib/sf2/banner.d"
 COLOUR_RESET='\e[0m'; BLUE='\e[38;5;33m'; WHITE='\e[1m'
+
 line() { echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"; }
+
+if [[ "${1:-}" = "--update" ]]; then
+  echo "[SF2] Updating via install-sf2-complete.sh…"
+  curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-complete.sh | sudo bash -- --update
+  exit $?
+fi
+
 line; echo -e " ${WHITE}SourceForge 2.0 Banner${COLOUR_RESET}"; line
 for script in $(ls -1 "$PLUGIN_DIR"/*.sh 2>/dev/null | sort); do
   [ -x "$script" ] && "$script" || echo "[SF2] WARNING: plugin failed: $(basename "$script")" >&2
