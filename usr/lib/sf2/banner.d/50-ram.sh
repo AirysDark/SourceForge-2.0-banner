@@ -1,2 +1,2 @@
 #!/bin/sh
-free -h | awk 'NR==2{print "[SF2] RAM: "$3" / "$2}'"
+free -h | awk 'NR==2{print "RAM: "$3" / "$2}'"

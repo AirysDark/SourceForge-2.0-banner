@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "[SF2] LAN IP: $(hostname -I | awk '{print $1}')"
+echo "LAN IP: $(hostname -I | awk '{print $1}')"
