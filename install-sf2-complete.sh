@@ -5,11 +5,14 @@ set -euo pipefail
 OWNER="${OWNER:-AirysDark}"
 REPO="${REPO:-SourceForge-2.0-banner}"
 BRANCH="${BRANCH:-main}"
-
 DO_UPDATE="no"
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --update) DO_UPDATE="yes"; shift;;
+    --owner) OWNER="${2:?}"; shift 2;;
+    --repo)  REPO="${2:?}"; shift 2;;
+    --branch) BRANCH="${2:?}"; shift 2;;
     *) break;;
   esac
 done

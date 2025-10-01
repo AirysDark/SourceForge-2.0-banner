@@ -1,12 +1,11 @@
 #!/bin/sh
-# 50-ram.sh — robust: parse /proc/meminfo (no free/awk quoting issues)
-
+# robust RAM via /proc/meminfo
 awk '
-  /MemTotal:/      { t=$2 }        # kB
-  /MemAvailable:/  { a=$2 }        # kB
+  /MemTotal:/      { t=$2 }
+  /MemAvailable:/  { a=$2 }
   END {
     if (t > 0) {
-      u = t - a                      # used kB
+      u = t - a
       printf "[SF2] RAM: %.1fGiB / %.1fGiB (%.0f%%)\n", u/1048576, t/1048576, (u/t)*100
     } else {
       print "[SF2] RAM: N/A"
