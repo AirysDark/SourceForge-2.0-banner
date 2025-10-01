@@ -10,8 +10,8 @@ print_cmd() {
 }
 
 echo "[SF2] Commands:"
-print_cmd sf2-launcher "All SF2 tools in one place"
 print_cmd sf2-config   "Toggle banner plugins"
+print_cmd sf2-launcher "All SF2 tools in one place"
 print_cmd sf2-software "Install optimized software"
 print_cmd sf2-update   "Update system/packages"
 print_cmd htop         "Resource monitor"

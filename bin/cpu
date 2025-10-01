@@ -1,0 +1,10 @@
+#!/bin/sh
+# cpu — show CPU info & stats
+model=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | xargs)
+cores=$(nproc 2>/dev/null || echo "?")
+mhz=$(awk -F: '/cpu MHz/ {print int($2); exit}' /proc/cpuinfo 2>/dev/null)
+
+echo "CPU: $model"
+echo "Cores: $cores"
+[ -n "$mhz" ] && echo "Base MHz: $mhz"
+echo "Load averages: $(cut -d' ' -f1-3 /proc/loadavg)"
