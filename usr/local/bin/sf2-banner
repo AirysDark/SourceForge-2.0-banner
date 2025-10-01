@@ -11,7 +11,6 @@ echo -e " ${BLUE}─────────────────────
 # Run each plugin, prefix with a white dash
 for script in /usr/lib/sf2/banner.d/*.sh; do
     if [ -x "$script" ]; then
-        # capture plugin output and prefix with dash
         while IFS= read -r line; do
             echo -e " ${WHITE}-${COLOUR_RESET} $line"
         done < <("$script")
