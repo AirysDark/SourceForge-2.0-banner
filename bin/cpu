@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
-lscpu | head -20
+set -euo pipefail
+lscpu | sed -n '1,20p' || true
