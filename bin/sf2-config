@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[SF2 Config] Placeholder config menu here."
+/usr/local/bin/sf2-banner
