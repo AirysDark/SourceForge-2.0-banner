@@ -1,21 +1,47 @@
 #!/bin/bash
-# SF2 Banner - Plugin based
-COLOUR_RESET='\e[0m'
-BLUE='\e[38;5;33m'
-WHITE='\e[97m'   # plain white for dash
+# SF2 Banner - plugin-based; centralized white dashes and blue separators
+set -euo pipefail
 
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
-echo -e " SourceForge 2.0 Banner : $(date '+%H:%M - %a %d/%m/%y')"
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+RESET=$'\e[0m'
+BLUE=$'\e[38;5;33m'
+WHITE=$'\e[97m'   # white dash for all lines
 
-# Run each plugin, prefix with a white dash
+hr(){
+  local cols
+  cols=$(tput cols 2>/dev/null || echo 78)
+  printf " %s%s%s\n" "$BLUE" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "$RESET"
+}
+
+strip_leading_dash(){
+  # remove a single leading dash and surrounding spaces from a line
+  sed -E 's/^[[:space:]]*-[[:space:]]*//'
+}
+
+# Header
+hr
+printf " SourceForge 2.0 Banner : %s\n" "$(date '+%H:%M - %a %d/%m/%y')"
+hr
+
+# INFO BLOCK: run all plugins and prefix each output line with a white dash
+shopt -s nullglob
 for script in /usr/lib/sf2/banner.d/*.sh; do
-    if [ -x "$script" ]; then
-        # capture plugin output and prefix with dash
-        while IFS= read -r line; do
-            echo -e " ${WHITE}-${COLOUR_RESET} $line"
-        done < <("$script")
-    fi
+  if [ -x "$script" ]; then
+    while IFS= read -r line; do
+      clean="$(printf '%s' "$line" | strip_leading_dash)"
+      printf " %s-%s %s\n" "$WHITE" "$RESET" "$clean"
+    done < <("$script")
+  fi
 done
 
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+# Divider between info and commands
+hr
+
+# COMMANDS BLOCK (also with white dashes)
+printf " %s-%s sf2-config             : Toggle banner plugins\n"        "$WHITE" "$RESET"
+printf " %s-%s sf2-software           : Service/DB/DDNS/HTTPS menu\n"    "$WHITE" "$RESET"
+printf " %s-%s sf2-banner --update    : Refresh banner + plugins\n"      "$WHITE" "$RESET"
+printf " %s-%s htop                   : Resource monitor\n"              "$WHITE" "$RESET"
+printf " %s-%s cpu                    : CPU info & stats\n"              "$WHITE" "$RESET"
+
+# Final separator
+hr

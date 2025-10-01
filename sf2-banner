@@ -1,80 +1,47 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# SF2 Banner - plugin-based; centralized white dashes and blue separators
 set -euo pipefail
 
-# -------- Colors (fallback to basic if 256 not available) --------
-supports_256() { tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
-if supports_256; then
-  C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
-  C_HEAD_TX=$'\e[38;5;195m'     # light cyan-white
-  C_ACC=$'\e[38;5;81m'          # cyan
-  C_WHITE=$'\e[97m'
-  C_BUL=$'\e[97m'
-  C_SEP=$'\e[38;5;24m'          # deep blue for lines
-  C_LABEL=$'\e[1m'              # bold
-  C_VAL=$'\e[0m'                # normal
-else
-  C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
-  C_HEAD_TX=$'\e[96m'
-  C_ACC=$'\e[36m'
-  C_WHITE=$'\e[97m'
-  C_BUL=$'\e[97m'
-  C_SEP=$'\e[34m'
-  C_LABEL=$'\e[1m'
-  C_VAL=$'\e[0m'
-fi
+RESET=$'\e[0m'
+BLUE=$'\e[38;5;33m'
+WHITE=$'\e[97m'   # white dash for all lines
 
-# ASCII-only horizontal rule
-hr() {
+hr(){
+  local cols
   cols=$(tput cols 2>/dev/null || echo 78)
-  printf '%s%s%s\n' "${C_SEP}" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "${C_RST}"
+  printf " %s%s%s\n" "$BLUE" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "$RESET"
 }
 
-header_line() {
-  local datetime
-  datetime="$(date '+%H:%M - %a %d/%m/%y')"
-  hr
-  printf " %sSourceForge 2.0 Banner%s%s : %s%s\n" "${C_HEAD_TX}${C_BOLD}" "${C_RST}" "${C_VAL}" "${C_ACC}" "${datetime}${C_RST}"
-  hr
+strip_leading_dash(){
+  # remove a single leading dash and surrounding spaces from a line
+  sed -E 's/^[[:space:]]*-[[:space:]]*//'
 }
 
-print_info() {
-  printf "%s- %sHostname:%s %s\n" "${C_ACC}" "${C_LABEL}" "${C_RST}" "$(hostname)"
-  printf "%s- %sUptime:%s %s\n"   "${C_ACC}" "${C_LABEL}" "${C_RST}" "$(uptime -p)"
-  ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-  printf "%s- %sLAN IP:%s %s\n"   "${C_ACC}" "${C_LABEL}" "${C_RST}" "${ip:-N/A}"
-  load="$(awk '{print $1, $2, $3}' /proc/loadavg)"
-  printf "%s- %sLoad:%s %s\n"     "${C_ACC}" "${C_LABEL}" "${C_RST}" "${load}"
-  read -r mem_total mem_used mem_perc <<<"$(free -m | awk '/Mem:/ {printf "%dMi %dMi %.0f%%", $2, $3, ($3/$2)*100}')"
-  printf "%s- %sRAM:%s %s / %s (%s)\n" "${C_ACC}" "${C_LABEL}" "${C_RST}" "${mem_used}" "${mem_total}" "${mem_perc}"
-  disk=$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')
-  printf "%s- %sDisk:%s %s\n"     "${C_ACC}" "${C_LABEL}" "${C_RST}" "${disk}"
-  hr
-}
+# Header
+hr
+printf " SourceForge 2.0 Banner : %s\n" "$(date '+%H:%M - %a %d/%m/%y')"
+hr
 
-print_cmds() {
-  echo
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-config"          "${C_RST}" "${C_ACC}" "Toggle banner plugins"        "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-software"        "${C_RST}" "${C_ACC}" "Service/DB/DDNS/HTTPS menu"   "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-banner --update" "${C_RST}" "${C_ACC}" "Refresh banner + plugins"     "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "htop"                "${C_RST}" "${C_ACC}" "Resource monitor"              "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "cpu"                 "${C_RST}" "${C_ACC}" "CPU info & stats"              "${C_RST}"
-  hr
-}
-
-# --update: clone & install from GitHub
-if [[ "${1:-}" == "--update" ]]; then
-  set -e
-  REPO="${REPO_URL:-https://github.com/AirysDark/SourceForge-2.0-banner.git}"
-  DIR="/tmp/sf2-update"
-  command -v git >/dev/null 2>&1 || { sudo apt-get update -y >/dev/null 2>&1 || true; sudo apt-get install -y git >/dev/null 2>&1; }
-  rm -rf "$DIR"
-  git clone --depth 1 "$REPO" "$DIR"
-  if [ -f "$DIR/install-sf2-complete.sh" ]; then
-    sudo bash "$DIR/install-sf2-complete.sh"
+# INFO BLOCK: run all plugins and prefix each output line with a white dash
+shopt -s nullglob
+for script in /usr/lib/sf2/banner.d/*.sh; do
+  if [ -x "$script" ]; then
+    while IFS= read -r line; do
+      clean="$(printf '%s' "$line" | strip_leading_dash)"
+      printf " %s-%s %s\n" "$WHITE" "$RESET" "$clean"
+    done < <("$script")
   fi
-  exec sf2-banner
-fi
+done
 
-header_line
-print_info
-print_cmds
+# Divider between info and commands
+hr
+
+# COMMANDS BLOCK (also with white dashes)
+printf " %s-%s sf2-config             : Toggle banner plugins\n"        "$WHITE" "$RESET"
+printf " %s-%s sf2-software           : Service/DB/DDNS/HTTPS menu\n"    "$WHITE" "$RESET"
+printf " %s-%s sf2-banner --update    : Refresh banner + plugins\n"      "$WHITE" "$RESET"
+printf " %s-%s htop                   : Resource monitor\n"              "$WHITE" "$RESET"
+printf " %s-%s cpu                    : CPU info & stats\n"              "$WHITE" "$RESET"
+
+# Final separator
+hr
