@@ -96,3 +96,19 @@ sudo chmod +x "$PROFILE"
 echo "──────────────────────────────────────────────"
 echo " Done."
 echo "──────────────────────────────────────────────"
+
+# Patch sf2-config so it auto-refreshes the banner after exit
+if [ -f /usr/local/bin/sf2-config ]; then
+  sudo awk '
+    NR==1 {print; next}
+    NR==2 {
+      print "_sf2_reload(){ [ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner >/dev/null 2>&1 || true; }"
+      print "trap _sf2_reload EXIT INT TERM"
+      print
+      next
+    }
+    {print}
+  ' /usr/local/bin/sf2-config | sudo tee /usr/local/bin/sf2-config >/dev/null
+  sudo chmod +x /usr/local/bin/sf2-config
+fi
+
