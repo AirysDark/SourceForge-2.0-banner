@@ -6,3 +6,7 @@
 ```Bash
 curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-banner.sh | sudo bash
 ```
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-banner-override.sh | sudo bash
+```
