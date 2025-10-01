@@ -1,3 +1,4 @@
+sudo tee /usr/local/bin/sf2-banner >/dev/null <<'BANNER'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -76,3 +77,8 @@ fi
 header_line
 info_block
 cmds_block
+BANNER
+sudo chmod 0755 /usr/local/bin/sf2-banner
+
+# quick sanity
+sf2-banner
