@@ -2,14 +2,20 @@
 # SF2 Banner - Plugin based
 COLOUR_RESET='\e[0m'
 BLUE='\e[38;5;33m'
-WHITE='\e[1m'
+WHITE='\e[97m'   # plain white for dash
 
 echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
-echo -e " ${WHITE}SourceForge 2.0 Banner${COLOUR_RESET}"
+echo -e " SourceForge 2.0 Banner : $(date '+%H:%M - %a %d/%m/%y')"
 echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
 
+# Run each plugin, prefix with a white dash
 for script in /usr/lib/sf2/banner.d/*.sh; do
-    [ -x "$script" ] && $script
+    if [ -x "$script" ]; then
+        # capture plugin output and prefix with dash
+        while IFS= read -r line; do
+            echo -e " ${WHITE}-${COLOUR_RESET} $line"
+        done < <("$script")
+    fi
 done
 
 echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"

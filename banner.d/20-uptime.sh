@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "- Uptime: $(uptime -p)"\n
+echo "Uptime: $(uptime -p)"\n

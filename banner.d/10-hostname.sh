@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "- Hostname: $(hostname)"\n
+echo "Hostname: $(hostname)"\n
