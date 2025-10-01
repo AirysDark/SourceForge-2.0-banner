@@ -1,34 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
-OWNER="${OWNER:-AirysDark}"; REPO="${REPO:-SourceForge-2.0-banner}"; BRANCH="${BRANCH:-main}"
-WORKDIR="/tmp/sf2-banner-install"
 
-[ "$EUID" -eq 0 ] || { echo "[SF2] Run with sudo/root."; exit 1; }
-command -v git >/dev/null 2>&1 || { echo "[SF2] Installing git…"; apt-get update -y >/dev/null 2>&1 || true; apt-get install -y git >/dev/null 2>&1; }
+REPO_URL="https://github.com/AirysDark/SourceForge-2.0-banner.git"
+TMP_DIR="/tmp/sf2-banner-install"
+INSTALL_DIR="/usr/lib/sf2"
+BIN_DIR="/usr/local/bin"
+SHARE_DIR="/usr/local/share/sf2"
 
-echo "[SF2] Cloning https://github.com/${OWNER}/${REPO}.git@${BRANCH} …"
-rm -rf "$WORKDIR"
-git clone --depth 1 --branch "$BRANCH" "https://github.com/${OWNER}/${REPO}.git" "$WORKDIR" >/dev/null
-cd "$WORKDIR"
+echo "──────────────────────────────────────────────"
+echo " [SF2] Installing SourceForge 2.0 Banner (clean style)"
+echo "──────────────────────────────────────────────"
 
-install -m0755 -D sf2-banner /usr/local/bin/sf2-banner
-install -m0755 -D sf2-config /usr/local/bin/sf2-config
-install -m0755 -D bin/cpu /usr/local/bin/cpu || true
-install -m0755 -D bin/sf2-software /usr/local/bin/sf2-software || true
-install -m0755 -D usr/local/share/sf2/software-full.sh /usr/local/share/sf2/software-full.sh || true
+# Clean old temp dir
+rm -rf "$TMP_DIR"
+git clone --depth=1 "$REPO_URL" "$TMP_DIR"
 
-mkdir -p /usr/lib/sf2/banner.d
-if ls banner.d/*.sh >/dev/null 2>&1; then
-  install -m0755 banner.d/*.sh /usr/lib/sf2/banner.d/
-fi
+# Create dirs
+sudo mkdir -p "$INSTALL_DIR/banner.d" "$BIN_DIR" "$SHARE_DIR"
 
-mkdir -p /etc/update-motd.d
-cat >/etc/update-motd.d/00-sf2-banner <<'EOF'
+# Install main scripts
+sudo install -m 755 "$TMP_DIR/sf2-banner" "$BIN_DIR/sf2-banner"
+sudo install -m 755 "$TMP_DIR/sf2-config" "$BIN_DIR/sf2-config"
+sudo install -m 755 "$TMP_DIR/bin/cpu" "$BIN_DIR/cpu"
+sudo install -m 755 "$TMP_DIR/bin/sf2-software" "$BIN_DIR/sf2-software"
+
+# Install full software menu
+sudo mkdir -p "$SHARE_DIR"
+sudo install -m 755 "$TMP_DIR/usr/local/share/sf2/software-full.sh" "$SHARE_DIR/software-full.sh"
+
+# Install plugins
+sudo cp -a "$TMP_DIR/banner.d/"* "$INSTALL_DIR/banner.d/"
+sudo chmod +x "$INSTALL_DIR/banner.d/"*.sh
+
+# MOTD hook
+MOTD_HOOK="/etc/profile.d/sf2-banner.sh"
+sudo tee "$MOTD_HOOK" >/dev/null <<'EOF'
 #!/bin/sh
-[ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
+sf2-banner
 EOF
-chmod +x /etc/update-motd.d/00-sf2-banner
+sudo chmod +x "$MOTD_HOOK"
 
-echo "[SF2] Test run:"
-/usr/local/bin/sf2-banner || true
-echo "[SF2] Done."
+echo "──────────────────────────────────────────────"
+echo " SourceForge 2.0 Banner installed."
+echo " Run with: sf2-banner"
+echo "──────────────────────────────────────────────"
