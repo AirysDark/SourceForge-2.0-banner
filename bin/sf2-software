@@ -5,6 +5,5 @@ if [[ -x "$FULL" ]]; then
   exec bash "$FULL"
 else
   echo "[SF2] Missing: $FULL"
-  echo "Put your full menu script there and run again."
   exit 1
 fi
