@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "[SF2] Hostname: $(hostname)"
+echo "- Hostname: $(hostname)"\n

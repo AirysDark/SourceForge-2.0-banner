@@ -1,2 +1,2 @@
 #!/bin/sh
-echo "[SF2] Uptime: $(uptime -p)"
+echo "- Uptime: $(uptime -p)"\n

@@ -1,20 +1,54 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 PLUGIN_DIR="/usr/lib/sf2/banner.d"
-COLOUR_RESET='\e[0m'; BLUE='\e[38;5;33m'; WHITE='\e[1m'
+COLOUR_RESET='\e[0m'
+BLUE='\e[38;5;33m'
+WHITE='\e[1m'
 
-line() { echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"; }
+hr() { echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"; }
+now() { date '+%H:%M - %a %d/%m/%y'; }
 
-if [[ "${1:-}" = "--update" ]]; then
-  echo "[SF2] Updating via install-sf2-complete.sh…"
-  curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-complete.sh | sudo bash -- --update
-  exit $?
+print_header() {
+  hr
+  echo -e " ${WHITE}SourceForge 2.0 Banner : $(now)${COLOUR_RESET}"
+  hr
+}
+
+# --update passthrough (optional)
+if [[ "${1:-}" == "--update" ]]; then
+  curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-complete.sh | sudo bash || true
+  exit 0
 fi
 
-line; echo -e " ${WHITE}SourceForge 2.0 Banner${COLOUR_RESET}"; line
-for script in $(ls -1 "$PLUGIN_DIR"/*.sh 2>/dev/null | sort); do
-  if [[ -x "$script" ]]; then
-    "$script" || echo "[SF2] WARNING: plugin failed: $(basename "$script")" >&2
-  fi
-done
-line
+print_header
+
+# Run info plugins (10..60)
+if compgen -G "$PLUGIN_DIR/*.sh" > /dev/null; then
+  for script in $(ls -1 "$PLUGIN_DIR"/*.sh | sort); do
+    base="$(basename "$script")"
+    if [[ "$base" == 70-* ]]; then
+      # stop before commands block
+      break
+    fi
+    if [[ -x "$script" ]]; then
+      "$script" || echo "WARNING: plugin failed: $base" >&2
+    fi
+  done
+fi
+
+# separator between info and commands
+hr
+echo
+
+# Run commands plugin (70-commands.sh) if present
+if [ -x "$PLUGIN_DIR/70-commands.sh" ]; then
+  "$PLUGIN_DIR/70-commands.sh" || true
+else
+  echo "sf2-config           : Toggle banner plugins"
+  echo "sf2-software         : Service/DB/DDNS/HTTPS menu"
+  echo "sf2-banner --update  : Refresh banner + plugins"
+  echo "htop                 : Resource monitor"
+  echo "cpu                  : CPU info & stats"
+  echo "────────────────────────────────────"
+fi
