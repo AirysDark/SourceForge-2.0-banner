@@ -1,20 +1,59 @@
+sudo tee /usr/local/bin/sf2-banner >/dev/null <<'BANNER'
 #!/bin/bash
-# SF2 Banner - Plugin based
-COLOUR_RESET='\e[0m'
-BLUE='\e[38;5;33m'
-WHITE='\e[97m'   # plain white for dash
+# SF2 Banner — centralized dash/separators; plugin sanitiser
+set -euo pipefail
 
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
-echo -e " SourceForge 2.0 Banner : $(date '+%H:%M - %a %d/%m/%y')"
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+RESET=$'\e[0m'
+BLUE=$'\e[38;5;33m'
+WHITE=$'\e[97m'   # white dash for bullets
 
-# Run each plugin, prefix output with white dash
+# Blue ASCII line (safe on any locale)
+hr() {
+  local cols; cols=$(tput cols 2>/dev/null || echo 78)
+  printf " %s%s%s\n" "$BLUE" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "$RESET"
+}
+
+# Strip one leading "- " (with spaces), strip trailing literal '\n',
+# drop lines that are just separators or command lines that plugins shouldn't print.
+clean_line() {
+  sed -E \
+    -e 's/^[[:space:]]*-[[:space:]]*//' \
+    -e "s/\\\\n$//" \
+    -e '/^[[:space:]]*[-─]{6,}[[:space:]]*$/d' \
+    -e '/^[[:space:]]*sf2-(config|software|banner)[[:space:]]/Id' \
+    -e '/^[[:space:]]*htop[[:space:]]*$/Id' \
+    -e '/^[[:space:]]*cpu[[:space:]]*$/Id'
+}
+
+# Header
+hr
+printf " SourceForge 2.0 Banner : %s\n" "$(date '+%H:%M - %a %d/%m/%y')"
+hr
+
+# INFO BLOCK (plugins)
+shopt -s nullglob
 for script in /usr/lib/sf2/banner.d/*.sh; do
-    if [ -x "$script" ]; then
-        while IFS= read -r line; do
-            echo -e " ${WHITE}-${COLOUR_RESET} $line"
-        done < <("$script")
-    fi
+  [ -x "$script" ] || continue
+  while IFS= read -r line; do
+    # sanitise plugin output
+    clean="$(printf '%s' "$line" | clean_line)"
+    # skip if empty after cleaning
+    [ -n "$clean" ] || continue
+    printf " %s-%s %s\n" "$WHITE" "$RESET" "$clean"
+  done < <("$script")
 done
 
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+# separator between info and commands
+hr
+
+# COMMANDS (we print these exactly once)
+printf " %s-%s sf2-config             : Toggle banner plugins\n"        "$WHITE" "$RESET"
+printf " %s-%s sf2-software           : Service/DB/DDNS/HTTPS menu\n"    "$WHITE" "$RESET"
+printf " %s-%s sf2-banner --update    : Refresh banner + plugins\n"      "$WHITE" "$RESET"
+printf " %s-%s htop                   : Resource monitor\n"              "$WHITE" "$RESET"
+printf " %s-%s cpu                    : CPU info & stats\n"              "$WHITE" "$RESET"
+
+# final line
+hr
+BANNER
+sudo chmod 0755 /usr/local/bin/sf2-banner
