@@ -28,6 +28,12 @@ install_file(){ # <src_rel> <dest_abs> <mode>
 
 install_all(){
   install_file sf2-banner /usr/local/bin/sf2-banner 755
+
+# Install the wrapper
+sudo install -m 755 ./sf2-software /usr/local/bin/sf2-software
+
+# Install the real script
+sudo install -m 755 ./software-full.sh /usr/local/share/sf2/software-full.sh
   install_file sf2-config /usr/local/bin/sf2-config 755
   install_file bin/cpu /usr/local/bin/cpu 755
   install_file bin/sf2-software /usr/local/bin/sf2-software 755
