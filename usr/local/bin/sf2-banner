@@ -1,58 +1,21 @@
-sudo tee /usr/local/bin/sf2-banner >/dev/null <<'BANNER'
 #!/bin/bash
-# SF2 Banner — robust plugin normalizer
-set -euo pipefail
+# SF2 Banner - Plugin based
+COLOUR_RESET='\e[0m'
+BLUE='\e[38;5;33m'
+WHITE='\e[97m'   # plain white for dash
 
-RESET=$'\e[0m'
-BLUE=$'\e[38;5;33m'
-WHITE=$'\e[97m'   # white dash for info lines
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+echo -e " SourceForge 2.0 Banner : $(date '+%H:%M - %a %d/%m/%y')"
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
 
-# Blue ASCII hr (no UTF-8 dependency)
-hr(){ local c; c=$(tput cols 2>/dev/null || echo 78); printf " %s%s%s\n" "$BLUE" "$(printf '%*s' "$c" '' | tr ' ' '-')" "$RESET"; }
-
-# Clean one line from a plugin:
-# - strip one leading "- "
-# - remove CR
-# - strip a lone trailing 'n' that some broken echoes append
-clean_line(){
-  sed -E \
-    -e 's/^[[:space:]]*-[[:space:]]*//' \
-    -e 's/\r$//' \
-    -e 's/([0-9%[:alpha:]])n$/\1/'
-}
-
-# Header
-hr
-printf " SourceForge 2.0 Banner : %s\n" "$(date '+%H:%M - %a %d/%m/%y')"
-hr
-
-# INFO BLOCK (plugins) — expand literal "\n" to real newlines *before* line reading
-shopt -s nullglob
+# Run each plugin, prefix with a white dash
 for script in /usr/lib/sf2/banner.d/*.sh; do
-  [ -x "$script" ] || continue
-  # 1) turn "\n" into real newlines, 2) drop plugin-drawn separators, 3) drop plugin-printed commands
-  "$script" \
-    | sed -E 's/\\n/\n/g' \
-    | sed -E '/^[[:space:]]*[-─]{6,}[[:space:]]*$/d' \
-    | sed -E '/^[[:space:]]*(sf2-config|sf2-software|sf2-banner([[:space:]]+--update)?|htop|cpu)([[:space:]]|:|$)/I d' \
-    | while IFS= read -r raw; do
-        line="$(printf '%s' "$raw" | clean_line)"
-        [ -n "$line" ] || continue
-        printf " %s-%s %s\n" "$WHITE" "$RESET" "$line"
-      done
+    if [ -x "$script" ]; then
+        # capture plugin output and prefix with dash
+        while IFS= read -r line; do
+            echo -e " ${WHITE}-${COLOUR_RESET} $line"
+        done < <("$script")
+    fi
 done
 
-# Middle divider
-hr
-
-# COMMANDS (no dash)
-printf " sf2-config             : Toggle banner plugins\n"
-printf " sf2-software           : Service/DB/DDNS/HTTPS menu\n"
-printf " sf2-banner --update    : Refresh banner + plugins\n"
-printf " htop                   : Resource monitor\n"
-printf " cpu                    : CPU info & stats\n"
-
-# Final divider
-hr
-BANNER
-sudo chmod 0755 /usr/local/bin/sf2-banner
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
