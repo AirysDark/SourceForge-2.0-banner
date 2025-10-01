@@ -6,7 +6,6 @@ WORKDIR="/tmp/sf2-banner-install"
 [ "$EUID" -eq 0 ] || { echo "[SF2] Run with sudo/root."; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "[SF2] Installing git…"; apt-get update -y >/dev/null 2>&1 || true; apt-get install -y git >/dev/null 2>&1; }
 
-install_file ./sf2-banner /usr/local/bin/sf2-banner 755
 echo "[SF2] Cloning https://github.com/${OWNER}/${REPO}.git@${BRANCH} …"
 rm -rf "$WORKDIR"
 git clone --depth 1 --branch "$BRANCH" "https://github.com/${OWNER}/${REPO}.git" "$WORKDIR" >/dev/null
