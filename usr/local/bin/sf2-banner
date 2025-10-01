@@ -1,18 +1,15 @@
-sudo awk '
-  BEGIN { done=0 }
-  /--update/ && done==0 {
-    print "if [[ \"${1:-}\" == \"--update\" ]]; then"
-    print "  set -e"
-    print "  REPO=\"https://github.com/AirysDark/SourceForge-2.0-banner.git\""
-    print "  DIR=\"/tmp/sf2-update\""
-    print "  command -v git >/dev/null 2>&1 || { sudo apt-get update -y >/dev/null 2>&1 || true; sudo apt-get install -y git >/dev/null 2>&1; }"
-    print "  rm -rf \"$DIR\""
-    print "  git clone --depth 1 \"$REPO\" \"$DIR\""
-    print "  if [ -f \"$DIR/install-sf2-complete.sh\" ]; then sudo bash \"$DIR/install-sf2-complete.sh\"; else sudo bash /tmp/install-sf2-complete.sh; fi"
-    print "  exit 0"
-    print "fi"
-    done=1
-  }
-  { print }
-' /usr/local/bin/sf2-banner | sudo tee /usr/local/bin/sf2-banner >/dev/null
-sudo chmod +x /usr/local/bin/sf2-banner
+#!/bin/bash
+# SF2 Banner - Plugin based
+COLOUR_RESET='\e[0m'
+BLUE='\e[38;5;33m'
+WHITE='\e[1m'
+
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+echo -e " ${WHITE}SourceForge 2.0 Banner${COLOUR_RESET}"
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+
+for script in /usr/lib/sf2/banner.d/*.sh; do
+    [ -x "$script" ] && $script
+done
+
+echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
