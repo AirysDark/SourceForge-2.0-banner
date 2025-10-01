@@ -1,0 +1,112 @@
+#!/bin/bash
+{
+	#////////////////////////////////////
+	# SourceForge 2.0 Launcher
+	#
+	#////////////////////////////////////
+	# Created by Daniel Knight / daniel.knight@sf2.com / sf2.com
+	#
+	#////////////////////////////////////
+	#
+	# Info:
+	# - Location: /usr/lib/sf2/sf2-launcher
+	# - Whiptail menu with list of most SourceForge 2.0 programs
+	#
+	#////////////////////////////////////
+	# Import SourceForge 2.0-Globals --------------------------------------------------------------
+	. /usr/lib/sf2/func/sf2-globals
+	readonly G_PROGRAM_NAME='SourceForge 2.0-Launcher'
+	G_CHECK_ROOT_USER "$@"
+	# Import SourceForge 2.0-Globals --------------------------------------------------------------
+
+	#/////////////////////////////////////////////////////////////////////////////////////
+	# MENUS
+	#/////////////////////////////////////////////////////////////////////////////////////
+	G_WHIP_DEFAULT_ITEM_NEXT='SourceForge 2.0-Config'
+
+	Menu_Main()
+	{
+		G_WHIP_MENU_ARRAY=(
+
+			'' '●─ Install Optimized Software '
+			'SourceForge 2.0-Software' ': Install optimised ready-to-run software'
+			'' '●─ Configuration '
+			'SourceForge 2.0-Config' ': Feature rich config tool for your device'
+			'SourceForge 2.0-Drive_Manager' ': Setup and control multiple external drives'
+			'SourceForge 2.0-AutoStart' ': Choose what software runs after boot'
+			'SourceForge 2.0-Services' ': Service and process tool control'
+			'SourceForge 2.0-LED_control' ': Adjust board LED triggers'
+			'SourceForge 2.0-Cron' ': Modify the start times of cron jobs'
+			'SourceForge 2.0-JustBoom' ': Launch EQ and MPD audio options menu'
+			'SourceForge 2.0-CloudShell' ': Adjust update rate, scene settings and more'
+			'' '●─ SourceForge 2.0 Updates '
+			'SourceForge 2.0-Update' ': Keep your SourceForge 2.0 system up to date'
+			'' '●─ Backups / Sync '
+			'SourceForge 2.0-Backup' ': Backup and restore your SourceForge 2.0 system'
+			'SourceForge 2.0-Sync' ': Duplicate (sync) one directory to another'
+			'' '●─ Maintenance '
+			'SourceForge 2.0-Explorer' ': File explorer and manager'
+			'SourceForge 2.0-Cleaner' ': Remove unwanted junk from your system'
+			'' '●─ Misc '
+			'SourceForge 2.0-CPUinfo' ': Displays CPU temp, frequencies, type etc.'
+			'SourceForge 2.0-LetsEncrypt' ': Frontend for Lets Encrypt, free SSL certs'
+			'SourceForge 2.0-VPN' ': GUI to setup a VPN connection'
+			'SourceForge 2.0-DDNS' ': Manage domains for your dynamic IP'
+			'SourceForge 2.0-Survey' ': Join or leave our usage program, or view upload file'
+			'SourceForge 2.0-BugReport' ': Found a bug? Let us know!'
+			'SourceForge 2.0-MorseCode' ': Converts and outputs a text file to morsecode'
+
+		)
+
+		G_WHIP_DEFAULT_ITEM=$G_WHIP_DEFAULT_ITEM_NEXT
+		G_WHIP_BUTTON_CANCEL_TEXT='Exit'
+		if G_WHIP_MENU 'Please select a program to run:'
+		then
+			[[ $G_WHIP_RETURNED_VALUE ]] || return
+
+			G_WHIP_DEFAULT_ITEM_NEXT=$G_WHIP_RETURNED_VALUE
+
+			# Convert to lowercase
+			local command=${G_WHIP_RETURNED_VALUE,,} error=0
+
+			# Run
+			if [[ -f '/usr/lib/sf2/'$command ]]
+			then
+				"/usr/lib/sf2/$command" || error=1
+
+			# - different location
+			elif [[ -f '/usr/lib/sf2/misc/'$command ]]
+			then
+				"/usr/lib/sf2/misc/$command" || error=1
+
+			# - different location
+			elif [[ -f '/usr/lib/sf2/func/'$command ]]
+			then
+				"/usr/lib/sf2/func/$command" || error=1
+			else
+				G_DIETPI-NOTIFY 1 "The chosen program $G_WHIP_RETURNED_VALUE could not be found on your system."
+				read -rp " - Press any key to return to $G_PROGRAM_NAME..."
+				return
+			fi
+
+			# Wait for user input
+			[[ $error == 1 || $command == 'sf2-cpuinfo' || $command == 'sf2-update' || $command == 'sf2-morsecode' ]] && read -rp " - Press any key to return to $G_PROGRAM_NAME..."
+
+		else
+			G_WHIP_SIZE_X_MAX=50
+			G_WHIP_YESNO "Exit $G_PROGRAM_NAME?" && exit 0
+		fi
+	}
+
+	#/////////////////////////////////////////////////////////////////////////////////////
+	# Main Loop
+	#/////////////////////////////////////////////////////////////////////////////////////
+	while :
+	do
+		G_TERM_CLEAR
+		Menu_Main
+	done
+	#-------------------------------------------------------------------------------------
+	exit
+	#-------------------------------------------------------------------------------------
+}

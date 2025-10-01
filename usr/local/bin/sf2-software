@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+AUTO="/usr/local/bin/sf2-banner"
+_sf2_reload(){ [ -x "$AUTO" ] && "$AUTO" >/dev/null 2>&1 || (command -v sf2-banner >/dev/null 2>&1 && sf2-banner >/dev/null 2>&1) || true; }
+trap _sf2_reload EXIT INT TERM
+
+FULL="/usr/local/share/sf2/software-full.sh"
+if [[ -x "$FULL" ]]; then
+  exec bash "$FULL"
+else
+  echo "Missing: $FULL"
+  exit 1
+fi
