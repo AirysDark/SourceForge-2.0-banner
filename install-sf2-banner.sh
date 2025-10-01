@@ -1,137 +1,77 @@
 #!/usr/bin/env bash
-# install-sf2-banner.sh — SourceForge 2.0 Banner installer
-# Usage:
-#   sudo bash install-sf2-banner.sh [--zip /path/to/sf2-full-scrub.zip] [--no-motd] [--motd] [--uninstall]
-# Defaults:
-#   - If --zip is omitted, expects files laid out like:
-#       ./usr/local/bin/sf2-banner
-#       ./usr/lib/sf2/banner.d/*.sh
+# install-sf2-banner.sh — GitHub-aware installer for SourceForge 2.0 banner
+# Online usage (recommended):
+#   curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-banner.sh | sudo bash
 set -euo pipefail
-
-ZIP=""
+OWNER="AirysDark"
+REPO="SourceForge-2.0-banner"
+BRANCH="main"
 DO_MOTD="yes"
 UNINSTALL="no"
-
+LOCAL_PATH=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --zip) ZIP="${2-}"; shift 2;;
+    --owner) OWNER="${2:?}"; shift 2;;
+    --repo) REPO="${2:?}"; shift 2;;
+    --branch) BRANCH="${2:?}"; shift 2;;
     --no-motd) DO_MOTD="no"; shift;;
     --motd) DO_MOTD="yes"; shift;;
     --uninstall) UNINSTALL="yes"; shift;;
-    -h|--help)
-      sed -n '1,30p' "$0"; exit 0;;
+    --local) LOCAL_PATH="${2:?}"; shift 2;;
     *) echo "Unknown arg: $1" >&2; exit 1;;
   esac
 done
-
-require_root() {
-  if [[ ${EUID} -ne 0 ]]; then
-    echo "Please run as root (sudo)." >&2
-    exit 1
-  fi
-}
-
+require_root() { [[ $EUID -eq 0 ]] || { echo "Please run as root (sudo)."; exit 1; }; }
 exists() { command -v "$1" >/dev/null 2>&1; }
-
-make_dirs() {
+fetch() { local rel="$1" dest="$2"; local base="https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}"; curl -fsSL "${base}/${rel}" -o "${dest}"; }
+install_files_from_local() {
+  local src="$1"
+  install -m 0755 -D "${src}/sf2-banner" /usr/local/bin/sf2-banner
   mkdir -p /usr/lib/sf2/banner.d
-  mkdir -p /usr/local/bin
-  mkdir -p /etc/sf2
-  mkdir -p /var/lib/sf2
-  mkdir -p /run/sf2
+  find "${src}/banner.d" -maxdepth 1 -type f -name "*.sh" -print0 | while IFS= read -r -d '' f; do
+    install -m 0755 -D "$f" "/usr/lib/sf2/banner.d/$(basename "$f")"
+  done
 }
-
-install_files_from_tree() {
-  local src_root="$1"
-  # binaries
-  install -m 0755 -D "${src_root}/usr/local/bin/sf2-banner" /usr/local/bin/sf2-banner
-  # plugins
-  install -m 0755 -D "${src_root}/usr/lib/sf2/banner.d" /usr/lib/sf2/banner.d
-  find "${src_root}/usr/lib/sf2/banner.d" -type f -name '*.sh' -exec install -m 0755 -D "{}" "/usr/lib/sf2/banner.d/$(basename "{}")" \;
+install_files_from_github() {
+  local tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+  fetch "sf2-banner" "/usr/local/bin/sf2-banner"
+  chmod 0755 /usr/local/bin/sf2-banner
+  mkdir -p /usr/lib/sf2/banner.d
+  for f in 10-hostname.sh 20-uptime.sh 30-ip.sh 40-load.sh 50-ram.sh 60-disk.sh; do
+    fetch "banner.d/${f}" "$tmp/$f"
+    install -m 0755 -D "$tmp/$f" "/usr/lib/sf2/banner.d/$f"
+  done
 }
-
 install_motd_hook() {
-  # Debian/Ubuntu PAM MOTD
   mkdir -p /etc/update-motd.d
   cat >/etc/update-motd.d/10-sf2-banner <<'EOF'
 #!/bin/sh
-# MOTD hook for SourceForge 2.0 banner
 [ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
 EOF
   chmod +x /etc/update-motd.d/10-sf2-banner
 }
-
-remove_motd_hook() {
-  rm -f /etc/update-motd.d/10-sf2-banner 2>/dev/null || true
-}
-
+remove_motd_hook() { rm -f /etc/update-motd.d/10-sf2-banner 2>/dev/null || true; }
 uninstall_all() {
   echo "[SF2] Uninstalling…"
   remove_motd_hook
   rm -f /usr/local/bin/sf2-banner 2>/dev/null || true
   rm -rf /usr/lib/sf2/banner.d 2>/dev/null || true
-  # Keep /etc/sf2, /var/lib/sf2, /run/sf2 (they might be used by other SF2 tools)
   echo "[SF2] Uninstall complete."
 }
-
 main() {
   require_root
-
-  if [[ "$UNINSTALL" == "yes" ]]; then
-    uninstall_all
-    exit 0
-  fi
-
-  workdir="$(mktemp -d)"
-  trap 'rm -rf "$workdir"' EXIT
-
-  if [[ -n "$ZIP" ]]; then
-    echo "[SF2] Installing from ZIP: $ZIP"
-    if ! exists unzip; then
-      echo "[SF2] Installing unzip…" >&2
-      if exists apt-get; then
-        apt-get update -y >/dev/null 2>&1 || true
-        apt-get install -y unzip >/dev/null
-      else
-        echo "Please install 'unzip' or extract manually." >&2
-        exit 1
-      fi
-    end if
-    fi
-    unzip -q "$ZIP" -d "$workdir"
-    # Try common top-level folder or root
-    if [[ -d "$workdir/usr/local/bin" ]]; then
-      src_root="$workdir"
-    else
-      # find the folder containing usr/local/bin
-      src_root="$(find "$workdir" -type d -path '*/usr/local/bin' -printf '%h\n' | head -n1 || true)"
-      if [[ -z "$src_root" ]]; then
-        echo "Cannot locate usr/local/bin in the ZIP." >&2
-        exit 1
-      fi
-    fi
+  if [[ "$UNINSTALL" == "yes" ]]; then uninstall_all; exit 0; fi
+  mkdir -p /usr/lib/sf2/banner.d /usr/local/bin /etc/sf2 /var/lib/sf2 /run/sf2
+  if [[ -n "$LOCAL_PATH" ]]; then
+    echo "[SF2] Installing from local path: $LOCAL_PATH"
+    install_files_from_local "$LOCAL_PATH"
   else
-    echo "[SF2] Installing from current tree."
-    src_root="."
+    echo "[SF2] Installing from GitHub: ${OWNER}/${REPO}@${BRANCH}"
+    if ! exists curl; then echo "curl is required. Install it and retry." >&2; exit 1; fi
+    install_files_from_github
   fi
-
-  make_dirs
-  install_files_from_tree "$src_root"
-  echo "[SF2] Installed /usr/local/bin/sf2-banner and plugins."
-
-  if [[ "$DO_MOTD" == "yes" ]]; then
-    install_motd_hook
-    echo "[SF2] MOTD hook installed at /etc/update-motd.d/10-sf2-banner"
-  else
-    remove_motd_hook
-    echo "[SF2] MOTD hook disabled."
-  fi
-
-  echo
-  echo "[SF2] Test run:"
-  /usr/local/bin/sf2-banner || true
-  echo
-  echo "[SF2] Done."
+  if [[ "$DO_MOTD" == "yes" ]]; then install_motd_hook; echo "[SF2] MOTD hook installed."; else remove_motd_hook; echo "[SF2] MOTD hook disabled."; fi
+  echo; echo "[SF2] Test run:"; /usr/local/bin/sf2-banner || true; echo; echo "[SF2] Done."
 }
-
 main "$@"
