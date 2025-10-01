@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install-sf2-complete.sh — install/override SF2 banner + commands plugin
+# install-sf2-complete.sh — install/override SF2 banner + commands plugin + cpu helper
 set -euo pipefail
 
 OWNER="${OWNER:-AirysDark}"
@@ -14,21 +14,43 @@ fetch() { local rel="$1" dest="$2"; curl -fsSL "$(raw "$rel")" -o "$dest"; }
 install_all() {
   mkdir -p /usr/local/bin /usr/lib/sf2/banner.d /etc/sf2 /var/lib/sf2 /run/sf2
 
-  # main runner
-  fetch "sf2-banner" "/usr/local/bin/sf2-banner"
-  chmod 755 /usr/local/bin/sf2-banner
+  # main runner: use local file if present, else fetch
+  if [ -f "./sf2-banner" ]; then
+    install -m 0755 -D "./sf2-banner" /usr/local/bin/sf2-banner
+  else
+    fetch "sf2-banner" "/usr/local/bin/sf2-banner"
+    chmod 755 /usr/local/bin/sf2-banner
+  fi
 
-  # plugins (core + commands)
-  for f in 10-hostname.sh 20-uptime.sh 30-ip.sh 40-load.sh 50-ram.sh 60-disk.sh 70-commands.sh; do
-    tmp="$(mktemp)"
-    fetch "banner.d/$f" "$tmp"
-    install -m 0755 -D "$tmp" "/usr/lib/sf2/banner.d/$f"
-    rm -f "$tmp"
+  # plugins (core + commands): prefer local copies
+  core_plugins="10-hostname.sh 20-uptime.sh 30-ip.sh 40-load.sh 50-ram.sh 60-disk.sh 70-commands.sh"
+  for f in $core_plugins; do
+    if [ -f "./banner.d/$f" ]; then
+      install -m 0755 -D "./banner.d/$f" "/usr/lib/sf2/banner.d/$f"
+    else
+      tmp="$(mktemp)"; fetch "banner.d/$f" "$tmp" || true
+      if [ -s "$tmp" ]; then install -m 0755 -D "$tmp" "/usr/lib/sf2/banner.d/$f"; fi
+      rm -f "$tmp"
+    fi
   done
 
-  # config tool
-  fetch "sf2-config" "/usr/local/bin/sf2-config" || true
-  [ -s /usr/local/bin/sf2-config ] && chmod 755 /usr/local/bin/sf2-config
+  # config tool: prefer local
+  if [ -f "./sf2-config" ]; then
+    install -m 0755 -D "./sf2-config" /usr/local/bin/sf2-config
+  else
+    tmp="$(mktemp)"; fetch "sf2-config" "$tmp" || true
+    [ -s "$tmp" ] && install -m 0755 -D "$tmp" /usr/local/bin/sf2-config
+    rm -f "$tmp"
+  fi
+
+  # cpu helper: prefer local
+  if [ -f "./bin/cpu" ]; then
+    install -m 0755 -D "./bin/cpu" /usr/local/bin/cpu
+  else
+    tmp="$(mktemp)"; fetch "bin/cpu" "$tmp" || true
+    [ -s "$tmp" ] && install -m 0755 -D "$tmp" /usr/local/bin/cpu
+    rm -f "$tmp"
+  fi
 }
 
 install_motd() {
@@ -57,7 +79,7 @@ main() {
   require_root
   exists curl || { echo "curl required"; exit 1; }
 
-  echo "[SF2] Installing SourceForge 2.0 banner + commands plugin…"
+  echo "[SF2] Installing SourceForge 2.0 banner + commands + cpu helper…"
   install_all
   install_motd
   disable_others
