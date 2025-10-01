@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-hr() { printf '%s\n' "$(printf '%*s' "$(tput cols 2>/dev/null || echo 40)" '' | tr ' ' '─')"; }
+hr() {
+  cols=$(tput cols 2>/dev/null || echo 78)
+  printf '%*s\n' "$cols" '' | tr ' ' '-'
+}
 
 print_header() {
   local datetime
@@ -17,9 +20,9 @@ print_info() {
   ip=$(hostname -I 2>/dev/null | awk '{print $1}')
   echo "- LAN IP: ${ip:-N/A}"
   echo "- Load: $(awk '{print $1, $2, $3}' /proc/loadavg)"
-  mem_total=$(free -h | awk '/Mem:/ {print $2}')
-  mem_used=$(free -h | awk '/Mem:/ {print $3}')
-  mem_perc=$(free | awk '/Mem:/ {printf "%.0f%%", $3/$2*100}')
+  read -r mem_total mem_used mem_perc <<EOF
+$(free -m | awk '/Mem:/ {printf "%dMi %dMi %.0f%%", $2, $3, ($3/$2)*100}')
+EOF
   echo "- RAM: $mem_used / $mem_total ($mem_perc)"
   disk=$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')
   echo "- Disk: $disk"
@@ -28,19 +31,25 @@ print_info() {
 
 print_cmds() {
   echo
-  echo " sf2-config           : Toggle banner plugins"
-  echo " sf2-software         : Service/DB/DDNS/HTTPS menu"
-  echo " sf2-banner --update  : Refresh banner + plugins"
-  echo " htop                 : Resource monitor"
-  echo " cpu                  : CPU info & stats"
+  printf "%-22s : %s\n" "sf2-config"            "Toggle banner plugins"
+  printf "%-22s : %s\n" "sf2-software"          "Service/DB/DDNS/HTTPS menu"
+  printf "%-22s : %s\n" "sf2-banner --update"   "Refresh banner + plugins"
+  printf "%-22s : %s\n" "htop"                  "Resource monitor"
+  printf "%-22s : %s\n" "cpu"                   "CPU info & stats"
   hr
 }
 
-if [[ \${1:-} == "--update" ]]; then
-  echo "Updating banner..."
-  git clone --depth=1 https://github.com/AirysDark/SourceForge-2.0-banner.git /tmp/sf2-banner-update
-  sudo cp -a /tmp/sf2-banner-update/* /usr/lib/sf2/ || true
-  rm -rf /tmp/sf2-banner-update
+# Self-update: clone and run installer from repo
+if [[ "${1:-}" == "--update" ]]; then
+  set -e
+  REPO="${REPO_URL:-https://github.com/AirysDark/SourceForge-2.0-banner.git}"
+  DIR="/tmp/sf2-update"
+  command -v git >/dev/null 2>&1 || { sudo apt-get update -y >/dev/null 2>&1 || true; sudo apt-get install -y git >/dev/null 2>&1; }
+  rm -rf "$DIR"
+  git clone --depth 1 "$REPO" "$DIR"
+  if [ -f "$DIR/install-sf2-complete.sh" ]; then
+    sudo bash "$DIR/install-sf2-complete.sh"
+  fi
   exec sf2-banner
 fi
 
