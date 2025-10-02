@@ -35,3 +35,16 @@ sudo tee /etc/update-motd.d/99-sf2-banner >/dev/null <<'EOF'
 EOF
 sudo chmod +x /etc/update-motd.d/99-sf2-banner
 ```
+```bash
+#!/bin/sh
+# Run SF2 banner before DietPi MOTD
+[ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
+
+# --- DietPi MOTD content (unchanged) ---
+# Example:
+echo "DietPi v$G_DIETPI_VERSION ..."
+# (etc, DietPi MOTD stuff goes here)
+
+# Run SF2 banner after DietPi MOTD
+[ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
+```
