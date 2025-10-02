@@ -12,3 +12,9 @@ install
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-complete.sh | sudo bash
 ```
+```bash
+ls -l /etc/update-motd.d/00-sf2-banner
+ls -l /etc/profile.d/00-sf2-banner.sh
+sudo chmod +x /etc/update-motd.d/00-sf2-banner
+sudo chmod +x /etc/profile.d/00-sf2-banner.sh
+```
