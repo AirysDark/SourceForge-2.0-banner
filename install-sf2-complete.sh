@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SourceForge 2.0 Banner — Complete installer (blue+white dashes)
+# SourceForge 2.0 Banner — Complete installer (blue labels + blue dashes, light-blue values)
 # Works from local OR via curl|bash; clones GitHub if needed.
 
 set -e -o pipefail
@@ -55,9 +55,9 @@ set -euo pipefail
 supports_256(){ tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
 if supports_256; then
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
-  C_HEAD_TX=$'\e[38;5;195m'
-  C_ACC=$'\e[38;5;81m'
-  C_SEP=$'\e[38;5;24m'
+  C_HEAD_TX=$'\e[38;5;195m'   # title
+  C_ACC=$'\e[38;5;81m'        # datetime
+  C_SEP=$'\e[38;5;24m'        # dark blue line
 else
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
   C_HEAD_TX=$'\e[96m'; C_ACC=$'\e[36m'; C_SEP=$'\e[34m'
@@ -75,17 +75,20 @@ done
 hr
 BANNER
 sudo chmod 0755 "$BIN/sf2-banner"
+sudo chown root:root "$BIN/sf2-banner"
 
 ###############################################################################
-# 2) sf2-config (rooted toggle; refresh banner on exit)
+# 2) sf2-config (root toggle; refresh banner on exit)
 ###############################################################################
 sudo tee "$BIN/sf2-config" >/dev/null <<'CONF'
 #!/usr/bin/env bash
 set -euo pipefail
 # Self-elevate
 if [ "${EUID:-$(id -u)}" -ne 0 ]; then exec sudo -E -- "$0" "$@"; fi
+
 DIR="/usr/lib/sf2/banner.d"
 [ -d "$DIR" ] || { echo "No plugin dir: $DIR"; exit 1; }
+
 while :; do
   echo "Plugins in: $DIR"
   i=1; declare -A MAP=()
@@ -102,9 +105,11 @@ while :; do
   else chmod a+x "$target" && echo "Enabled  $(basename "$target")"; fi
   echo
 done
+
 command -v /usr/local/bin/sf2-banner >/dev/null 2>&1 && /usr/local/bin/sf2-banner || true
 CONF
 sudo chmod 0755 "$BIN/sf2-config"
+sudo chown root:root "$BIN/sf2-config"
 
 ###############################################################################
 # 3) Optional software-full.sh (if repo provides it)
@@ -114,7 +119,7 @@ if [ -f "$SCRIPT_DIR/usr/local/share/sf2/software-full.sh" ]; then
 fi
 
 ###############################################################################
-# 4) colors.sh (blue + white; safe ANSI fallback is handled in plugins)
+# 4) colors.sh (LEFT = dark blue dash + label; RIGHT = light blue value)
 ###############################################################################
 sudo tee "$LIB/colors.sh" >/dev/null <<'COLORS'
 #!/bin/bash
@@ -122,68 +127,81 @@ sudo tee "$LIB/colors.sh" >/dev/null <<'COLORS'
 supports_256(){ tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
 if supports_256; then
   C_RST=$'\e[0m'
-  C_BLUE=$'\e[38;5;33m'
-  C_WHITE=$'\e[97m'
+  C_LABEL=$'\e[38;5;24m'    # dark blue (labels)
+  C_VAL=$'\e[38;5;81m'      # light blue (values)
+  C_BUL=$'\e[38;5;24m'      # dark blue dash
+  C_SEP=$'\e[38;5;24m'      # dark blue separator line
 else
   C_RST=$'\e[0m'
-  C_BLUE=$'\e[34m'
-  C_WHITE=$'\e[97m'
+  C_LABEL=$'\e[34m'
+  C_VAL=$'\e[36m'
+  C_BUL=$'\e[34m'
+  C_SEP=$'\e[34m'
 fi
 COLORS
 sudo chmod 0644 "$LIB/colors.sh"
+sudo chown root:root "$LIB/colors.sh"
 
 ###############################################################################
-# 5) Plugins (white dash + blue labels; commands have NO dash)
+# 5) Plugins (dash + label = dark blue, value = light blue; commands have NO dash)
 ###############################################################################
 sudo tee "$PLUG_DIR/10-hostname.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
-echo -e " ${C_WHITE}-${C_RST} ${C_BLUE}Hostname:${C_RST} $(hostname)"
+echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Hostname:${C_RST} ${C_VAL}$(hostname)${C_RST}"
 PLUG
+
 sudo tee "$PLUG_DIR/20-uptime.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
-echo -e " ${C_WHITE}-${C_RST} ${C_BLUE}Uptime:${C_RST} $(uptime -p)"
+echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Uptime:${C_RST} ${C_VAL}$(uptime -p)${C_RST}"
 PLUG
+
 sudo tee "$PLUG_DIR/30-ip.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-echo -e " ${C_WHITE}-${C_RST} ${C_BLUE}LAN IP:${C_RST} ${ip:-N/A}"
+echo -e " ${C_BUL}-${C_RST} ${C_LABEL}LAN IP:${C_RST} ${C_VAL}${ip:-N/A}${C_RST}"
 PLUG
+
 sudo tee "$PLUG_DIR/40-load.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 load=$(awk '{print $1, $2, $3}' /proc/loadavg)
-echo -e " ${C_WHITE}-${C_RST} ${C_BLUE}Load:${C_RST} ${load}"
+echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Load:${C_RST} ${C_VAL}${load}${C_RST}"
 PLUG
+
 sudo tee "$PLUG_DIR/50-ram.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 read -r mem_total mem_used mem_perc <<<"$(free -m | awk '/Mem:/ {printf "%dMi %dMi %.0f%%", $2, $3, ($3/$2)*100}')"
-echo -e " ${C_WHITE}-${C_RST} ${C_BLUE}RAM:${C_RST} ${mem_used} / ${mem_total} (${mem_perc})"
+echo -e " ${C_BUL}-${C_RST} ${C_LABEL}RAM:${C_RST} ${C_VAL}${mem_used} / ${mem_total} (${mem_perc})${C_RST}"
 PLUG
+
 sudo tee "$PLUG_DIR/60-disk.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 disk=$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')
-echo -e " ${C_WHITE}-${C_RST} ${C_BLUE}Disk:${C_RST} ${disk}"
+echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Disk:${C_RST} ${C_VAL}${disk}${C_RST}"
 PLUG
+
 sudo tee "$PLUG_DIR/70-commands.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 # Blue separator above commands
 cols=$(tput cols 2>/dev/null || echo 78)
-printf '%s%s%s\n' "${C_BLUE}" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "${C_RST}"
-# NO dashes here; aligned
-printf " %-22s : %s\n" "sf2-config"           "Toggle banner plugins"
-printf " %-22s : %s\n" "sf2-software"         "Service/DB/DDNS/HTTPS menu"
-printf " %-22s : %s\n" "sf2-banner --update"  "Refresh banner + plugins"
-printf " %-22s : %s\n" "htop"                 "Resource monitor"
-printf " %-22s : %s\n" "cpu"                  "CPU info & stats"
+printf '%s%s%s\n' "${C_SEP}" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "${C_RST}"
+
+# NO dashes; aligned; command name = dark blue, description = light blue
+printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-config"           "${C_RST}" "${C_VAL}" "Toggle banner plugins"        "${C_RST}"
+printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-software"         "${C_RST}" "${C_VAL}" "Service/DB/DDNS/HTTPS menu"   "${C_RST}"
+printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-banner --update"  "${C_RST}" "${C_VAL}" "Refresh banner + plugins"     "${C_RST}"
+printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "htop"                 "${C_RST}" "${C_VAL}" "Resource monitor"              "${C_RST}"
+printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "cpu"                  "${C_RST}" "${C_VAL}" "CPU info & stats"              "${C_RST}"
 PLUG
 
 sudo chmod 0755 "$PLUG_DIR"/*.sh
+sudo chown -R root:root "$LIB"
 
 ###############################################################################
 # 6) MOTD + profile hooks
@@ -193,6 +211,7 @@ sudo tee "$MOTD" >/dev/null <<'HOOK'
 [ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
 HOOK
 sudo chmod +x "$MOTD"
+sudo chown root:root "$MOTD"
 
 sudo tee "$PROFILE" >/dev/null <<'PROFILE'
 #!/bin/sh
@@ -202,6 +221,7 @@ case "$-" in
 esac
 PROFILE
 sudo chmod +x "$PROFILE"
+sudo chown root:root "$PROFILE"
 
 ###############################################################################
 # 7) Test run
