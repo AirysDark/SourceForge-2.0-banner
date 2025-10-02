@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SourceForge 2.0 Banner — Complete installer
 # Blue labels + blue dashes (bright blue), light-blue values, dark-blue lines
-# Works locally or clones GitHub if local files are missing.
+# Adds sf2-live (watch -n 5) and boots into live dashboard on tty1.
 
 set -e -o pipefail
 SELF="${BASH_SOURCE[0]:-$0}"
@@ -23,7 +23,7 @@ PROFILE="/etc/profile.d/00-sf2-banner.sh"
 say(){ printf '%s\n' "$*"; }
 
 say "──────────────────────────────────────────────"
-say " Installing SourceForge 2.0 Banner (GitHub-aware)"
+say " Installing SourceForge 2.0 Banner (GitHub-aware + Live Dashboard)"
 say "──────────────────────────────────────────────"
 
 # Decide source: local or GitHub clone
@@ -204,7 +204,7 @@ sudo chmod 0755 "$PLUG_DIR"/*.sh
 sudo chown -R root:root "$LIB"
 
 ###############################################################################
-# 6) MOTD + profile hooks
+# 6) MOTD + profile hooks (single print for login shells)
 ###############################################################################
 sudo tee "$MOTD" >/dev/null <<'HOOK'
 #!/bin/sh
@@ -224,10 +224,58 @@ sudo chmod +x "$PROFILE"
 sudo chown root:root "$PROFILE"
 
 ###############################################################################
-# 7) Test run
+# 7) LIVE DASHBOARD (sf2-live + tty1 autologin + auto-start on tty1)
+###############################################################################
+# Ensure watch exists
+if ! command -v watch >/dev/null 2>&1; then
+  sudo apt-get update -y >/dev/null 2>&1 || true
+  sudo apt-get install -y procps >/dev/null 2>&1
+fi
+
+# Wrapper: sf2-live (refresh every 5s, no watch header)
+sudo tee "$BIN/sf2-live" >/dev/null <<'LIVE'
+#!/usr/bin/env bash
+exec watch -t -n 5 /usr/local/bin/sf2-banner
+LIVE
+sudo chmod 0755 "$BIN/sf2-live"
+sudo chown root:root "$BIN/sf2-live"
+
+# Detect login user for tty1
+USER_NAME="${SUDO_USER:-$(id -un)}"
+USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+[ -n "$USER_HOME" ] || USER_HOME="/home/$USER_NAME"
+
+# Auto-login on tty1 to USER_NAME
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+sudo tee /etc/systemd/system/getty@tty1.service.d/override.conf >/dev/null <<INI
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin ${USER_NAME} --noclear %I \$TERM
+Type=idle
+INI
+sudo systemctl daemon-reload
+sudo systemctl restart getty@tty1.service || true
+
+# Auto-start sf2-live only on tty1 interactive sessions
+PROFILE_SNIPPET="${USER_HOME}/.bash_profile"
+sudo touch "$PROFILE_SNIPPET"
+sudo chown "${USER_NAME}:${USER_NAME}" "$PROFILE_SNIPPET"
+if ! sudo grep -q "SF2_LIVE_TTY1" "$PROFILE_SNIPPET" 2>/dev/null; then
+  sudo tee -a "$PROFILE_SNIPPET" >/dev/null <<'BASHRC'
+# --- SF2_LIVE_TTY1 ---
+if [[ -t 1 && "$(tty 2>/dev/null)" == "/dev/tty1" && -x /usr/local/bin/sf2-live ]]; then
+  exec /usr/local/bin/sf2-live
+fi
+# --- SF2_LIVE_TTY1 ---
+BASHRC
+fi
+
+###############################################################################
+# 8) Test run
 ###############################################################################
 /usr/local/bin/sf2-banner || true
 
 say "──────────────────────────────────────────────"
-say " Done."
+say " Done. Live dashboard is set to auto-run on tty1 (refresh 5s)."
+say " Ctrl-C exits the live dashboard; SSH shells are unaffected."
 say "──────────────────────────────────────────────"
