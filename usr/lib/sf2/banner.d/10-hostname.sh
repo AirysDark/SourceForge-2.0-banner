@@ -1,3 +1,3 @@
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
-echo -e " ${C_WHITE}-${C_RST} ${C_BLUE}Hostname:${C_RST} $(hostname)"
+echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Hostname:${C_RST} ${C_VAL}$(hostname)${C_RST}"
