@@ -56,10 +56,10 @@ done
 
 # Divider and a clean commands block (no dash bullets)
 hr
-printf " sf2-config             : Toggle banner plugins\n"
-printf " sf2-software           : Service/DB/DDNS/HTTPS menu\n"
-printf " sf2-banner --update    : Refresh banner + plugins\n"
-printf " htop                   : Resource monitor\n"
-printf " cpu                    : CPU info & stats\n"
+printf " sudo sf2-config             : Toggle banner plugins\n"
+printf "sudo sf2-software           : Service/DB/DDNS/HTTPS menu\n"
+printf "sudo  sf2-banner --update    : Refresh banner + plugins\n"
+printf "sudo  htop                   : Resource monitor\n"
+printf "sudo  cpu                    : CPU info & stats\n"
 hr
 BANNER
