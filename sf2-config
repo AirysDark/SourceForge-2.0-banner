@@ -1,24 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
-trap 'sf2-banner >/dev/null 2>&1 || true' EXIT
+
+# Self-elevate if not root
+if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+  exec sudo -E -- "$0" "$@"
+fi
 
 DIR="/usr/lib/sf2/banner.d"
-mkdir -p "$DIR"
-echo "Plugins in: $DIR"
-i=1
-declare -A MAP
-for f in "$DIR"/*.sh; do
-  [ -e "$f" ] || continue
-  base="$(basename "$f")"
-  [ -x "$f" ] && st="ENABLED" || st="disabled"
-  printf " %2d) %-24s [%s]\n" "$i" "$base" "$st"
-  MAP[$i]="$f"
-  i=$((i+1))
+
+# Sanity: ensure directory exists
+[ -d "$DIR" ] || { echo "No plugin dir: $DIR"; exit 1; }
+
+while :; do
+  echo "Plugins in: $DIR"
+  i=1
+  declare -A MAP=()
+  # Sorted list (numeric order respected by filenames like 10-*, 20-*)
+  while IFS= read -r -d '' f; do
+    base="$(basename "$f")"
+    if [ -x "$f" ]; then st="ENABLED"; else st="disabled"; fi
+    printf " %2d) %-24s [%s]\n" "$i" "$base" "$st"
+    MAP[$i]="$f"
+    i=$((i+1))
+  done < <(find "$DIR" -maxdepth 1 -type f -name '*.sh' -print0 | sort -z)
+
+  echo
+  read -r -p "Toggle which # (q=quit): " pick || true
+  case "${pick:-q}" in
+    q|Q|'') break ;;
+    ''|*[!0-9]*) continue ;;
+  esac
+
+  target="${MAP[$pick]:-}"
+  [ -n "${target}" ] || continue
+
+  if [ -x "$target" ]; then
+    chmod a-x "$target" && echo "Disabled $(basename "$target")"
+  else
+    chmod a+x "$target" && echo "Enabled  $(basename "$target")"
+  fi
+  echo
 done
-echo
-read -rp "Toggle which # (q=quit): " pick || true
-[[ "${pick:-q}" =~ ^[0-9]+$ ]] || exit 0
-target="${MAP[$pick]:-}"
-[ -n "$target" ] || exit 0
-if [ -x "$target" ]; then chmod -x "$target"; echo "Disabled $(basename "$target")"
-else chmod +x "$target"; echo "Enabled $(basename "$target")"; fi
+
+# Auto-refresh banner on exit
+if command -v /usr/local/bin/sf2-banner >/dev/null 2>&1; then
+  /usr/local/bin/sf2-banner || true
+fi
