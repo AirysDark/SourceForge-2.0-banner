@@ -28,7 +28,7 @@ say "─────────────────────────
 
 # Decide source: local or GitHub clone
 need_any=0
-for f in sf2-banner sf2-config usr/local/share/sf2/software-full.sh; do
+for f in sf2-banner sf2-config usr/local/share/sf2/software-full.sh bin/sf2-software bin/cpu; do
   [ -e "$SCRIPT_DIR/$f" ] || need_any=1
 done
 if [ "$need_any" -eq 1 ]; then
@@ -112,15 +112,42 @@ sudo chmod 0755 "$BIN/sf2-config"
 sudo chown root:root "$BIN/sf2-config"
 
 ###############################################################################
-# 3) Optional software-full.sh (if repo provides it)
+# 3) sf2-software + cpu (install if present; otherwise create a wrapper)
 ###############################################################################
+# sf2-software
+if [ -f "$SCRIPT_DIR/bin/sf2-software" ]; then
+  sudo install -m0755 "$SCRIPT_DIR/bin/sf2-software" "$BIN/sf2-software"
+else
+  # Wrapper that launches the full menu if it exists
+  sudo tee "$BIN/sf2-software" >/dev/null <<'WRAP'
+#!/usr/bin/env bash
+set -euo pipefail
+FULL="/usr/local/share/sf2/software-full.sh"
+if [ -x "$FULL" ]; then
+  exec bash "$FULL"
+else
+  echo "sf2-software: missing $FULL"
+  echo "Tip: place your menu script there, or re-run the installer with it in repo at usr/local/share/sf2/software-full.sh"
+  exit 1
+fi
+WRAP
+  sudo chmod 0755 "$BIN/sf2-software"
+fi
+sudo chown root:root "$BIN/sf2-software"
+
+# cpu (optional helper)
+if [ -f "$SCRIPT_DIR/bin/cpu" ]; then
+  sudo install -m0755 "$SCRIPT_DIR/bin/cpu" "$BIN/cpu"
+  sudo chown root:root "$BIN/cpu"
+fi
+
+# Optional full menu if provided by repo
 if [ -f "$SCRIPT_DIR/usr/local/share/sf2/software-full.sh" ]; then
   sudo install -m0755 "$SCRIPT_DIR/usr/local/share/sf2/software-full.sh" "$SHARE/software-full.sh"
 fi
 
 ###############################################################################
-# 4) colors.sh
-# Dash + label = bright blue (33); values = light blue (81); separators = dark blue (24)
+# 4) colors.sh (dash/labels = bright blue; values = light blue; separators = dark blue)
 ###############################################################################
 sudo tee "$LIB/colors.sh" >/dev/null <<'COLORS'
 #!/bin/bash
@@ -150,41 +177,35 @@ sudo tee "$PLUG_DIR/10-hostname.sh" >/dev/null <<'PLUG'
 . /usr/lib/sf2/colors.sh
 echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Hostname:${C_RST} ${C_VAL}$(hostname)${C_RST}"
 PLUG
-
 sudo tee "$PLUG_DIR/20-uptime.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Uptime:${C_RST} ${C_VAL}$(uptime -p)${C_RST}"
 PLUG
-
 sudo tee "$PLUG_DIR/30-ip.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 ip=$(hostname -I 2>/dev/null | awk '{print $1}')
 echo -e " ${C_BUL}-${C_RST} ${C_LABEL}LAN IP:${C_RST} ${C_VAL}${ip:-N/A}${C_RST}"
 PLUG
-
 sudo tee "$PLUG_DIR/40-load.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 load=$(awk '{print $1, $2, $3}' /proc/loadavg)
 echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Load:${C_RST} ${C_VAL}${load}${C_RST}"
 PLUG
-
 sudo tee "$PLUG_DIR/50-ram.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 read -r mem_total mem_used mem_perc <<<"$(free -m | awk '/Mem:/ {printf "%dMi %dMi %.0f%%", $2, $3, ($3/$2)*100}')"
 echo -e " ${C_BUL}-${C_RST} ${C_LABEL}RAM:${C_RST} ${C_VAL}${mem_used} / ${mem_total} (${mem_perc})${C_RST}"
 PLUG
-
 sudo tee "$PLUG_DIR/60-disk.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
 disk=$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')
 echo -e " ${C_BUL}-${C_RST} ${C_LABEL}Disk:${C_RST} ${C_VAL}${disk}${C_RST}"
 PLUG
-
 sudo tee "$PLUG_DIR/70-commands.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
@@ -199,7 +220,6 @@ printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-banner --update"  "${C_RST}" "$
 printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "htop"                 "${C_RST}" "${C_VAL}" "Resource monitor"              "${C_RST}"
 printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "cpu"                  "${C_RST}" "${C_VAL}" "CPU info & stats"              "${C_RST}"
 PLUG
-
 sudo chmod 0755 "$PLUG_DIR"/*.sh
 sudo chown -R root:root "$LIB"
 
