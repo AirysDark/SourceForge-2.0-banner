@@ -24,3 +24,26 @@ target="${MAP[$pick]:-}"
 [ -n "$target" ] || exit 0
 if [ -x "$target" ]; then chmod -x "$target" && echo "Disabled $(basename "$target")"
 else chmod +x "$target" && echo "Enabled  $(basename "$target")"; fi
+
+# Move the real tool aside (keep original intact)
+sudo mv /usr/local/bin/sf2-config /usr/local/bin/.sf2-config-real
+
+# New wrapper that: (a) elevates if needed, (b) runs real tool, (c) refreshes banner
+sudo tee /usr/local/bin/sf2-config >/dev/null <<'WRAP'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# self-elevate if not root
+if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+  exec sudo -E -- "$0" "$@"
+fi
+
+# run the real tool
+/usr/local/bin/.sf2-config-real "$@"
+
+# auto-reload banner on exit
+if command -v /usr/local/bin/sf2-banner >/dev/null 2>&1; then
+  /usr/local/bin/sf2-banner >/dev/null 2>&1 || true
+fi
+WRAP
+sudo chmod 0755 /usr/local/bin/sf2-config
