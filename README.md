@@ -48,3 +48,37 @@ echo "DietPi v$G_DIETPI_VERSION ..."
 # Run SF2 banner after DietPi MOTD
 [ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
 ```
+```bash
+sudo tee /usr/local/bin/sf2-live >/dev/null <<'SH'
+#!/usr/bin/env bash
+exec watch -t -n 5 /usr/local/bin/sf2-banner
+SH
+sudo chmod +x /usr/local/bin/sf2-live
+
+# Run it
+sf2-live   # Ctrl-C to exit
+```
+```bash
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+sudo tee /etc/systemd/system/getty@tty1.service.d/override.conf >/dev/null <<'INI'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin dietpi --noclear %I $TERM
+Type=idle
+INI
+sudo systemctl daemon-reload
+sudo systemctl restart getty@tty1.service
+```
+```bash
+tee -a ~/.bash_profile >/dev/null <<'SH'
+# Auto-start SF2 live dashboard on local console only
+if [[ -t 1 && "$(tty 2>/dev/null)" == "/dev/tty1" && -x /usr/local/bin/sf2-live ]]; then
+  exec /usr/local/bin/sf2-live
+fi
+SH
+```
+```bash
+sudo rm /etc/systemd/system/getty@tty1.service.d/override.conf
+sudo systemctl daemon-reload
+sudo systemctl restart getty@tty1.service
+```
