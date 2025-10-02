@@ -1,80 +1,67 @@
+sudo tee /usr/local/bin/sf2-banner >/dev/null <<'BANNER'
 #!/usr/bin/env bash
 set -euo pipefail
 
-# -------- Colors (fallback to basic if 256 not available) --------
-supports_256() { tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
+# Colors
+supports_256(){ tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
 if supports_256; then
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
-  C_HEAD_TX=$'\e[38;5;195m'     # light cyan-white
-  C_ACC=$'\e[38;5;81m'          # cyan
-  C_WHITE=$'\e[97m'
-  C_BUL=$'\e[97m'
-  C_SEP=$'\e[38;5;24m'          # deep blue for lines
-  C_LABEL=$'\e[1m'              # bold
-  C_VAL=$'\e[0m'                # normal
+  C_HEAD_TX=$'\e[38;5;195m'  # header text
+  C_ACC=$'\e[38;5;81m'       # accent for datetime
+  C_SEP=$'\e[38;5;24m'       # blue hr
+  C_BUL=$'\e[97m'            # white bullet
 else
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
-  C_HEAD_TX=$'\e[96m'
-  C_ACC=$'\e[36m'
-  C_WHITE=$'\e[97m'
-  C_BUL=$'\e[97m'
-  C_SEP=$'\e[34m'
-  C_LABEL=$'\e[1m'
-  C_VAL=$'\e[0m'
+  C_HEAD_TX=$'\e[96m'; C_ACC=$'\e[36m'; C_SEP=$'\e[34m'; C_BUL=$'\e[97m'
 fi
 
-# ASCII-only horizontal rule
-hr() {
-  cols=$(tput cols 2>/dev/null || echo 78)
-  printf '%s%s%s\n' "${C_SEP}" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "${C_RST}"
+# ASCII hr
+hr(){ cols=$(tput cols 2>/dev/null || echo 78); printf '%s%s%s\n' "${C_SEP}" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "${C_RST}"; }
+
+# Sanitize a plugin stream:
+# - expand "\n" -> real newlines
+# - remove CR
+# - strip one leading "- "
+# - drop plugin-drawn separators
+# - drop command lines (we print commands centrally)
+# - fix trailing stray 'n' (only if it follows numbers, %, or ')', or the word "minutes")
+sanitize_stream(){
+  sed -E \
+    -e 's/\\n/\n/g' \
+    -e 's/\r$//' \
+    -e 's/^[[:space:]]*-[[:space:]]*/ /' \
+    -e '/^[[:space:]]*[-─]{6,}[[:space:]]*$/d' \
+    -e '/^[[:space:]]*(sf2-config|sf2-software|sf2-banner([[:space:]]+--update)?|htop|cpu)([[:space:]]|:|$)/I d' \
+    -e 's/([0-9%\\)])n$/\1/' \
+    -e 's/(minutes)n$/\1/'
 }
 
-header_line() {
-  local datetime
-  datetime="$(date '+%H:%M - %a %d/%m/%y')"
-  hr
-  printf " %sSourceForge 2.0 Banner%s%s : %s%s\n" "${C_HEAD_TX}${C_BOLD}" "${C_RST}" "${C_VAL}" "${C_ACC}" "${datetime}${C_RST}"
-  hr
-}
+# Header
+dt="$(date '+%H:%M - %a %d/%m/%y')"
+hr
+printf " %sSourceForge 2.0 Banner%s : %s%s%s\n" "${C_HEAD_TX}${C_BOLD}" "${C_RST}" "${C_ACC}" "$dt" "${C_RST}"
+hr
 
-print_info() {
-  printf "%s- %sHostname:%s %s\n" "${C_ACC}" "${C_LABEL}" "${C_RST}" "$(hostname)"
-  printf "%s- %sUptime:%s %s\n"   "${C_ACC}" "${C_LABEL}" "${C_RST}" "$(uptime -p)"
-  ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-  printf "%s- %sLAN IP:%s %s\n"   "${C_ACC}" "${C_LABEL}" "${C_RST}" "${ip:-N/A}"
-  load="$(awk '{print $1, $2, $3}' /proc/loadavg)"
-  printf "%s- %sLoad:%s %s\n"     "${C_ACC}" "${C_LABEL}" "${C_RST}" "${load}"
-  read -r mem_total mem_used mem_perc <<<"$(free -m | awk '/Mem:/ {printf "%dMi %dMi %.0f%%", $2, $3, ($3/$2)*100}')"
-  printf "%s- %sRAM:%s %s / %s (%s)\n" "${C_ACC}" "${C_LABEL}" "${C_RST}" "${mem_used}" "${mem_total}" "${mem_perc}"
-  disk=$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')
-  printf "%s- %sDisk:%s %s\n"     "${C_ACC}" "${C_LABEL}" "${C_RST}" "${disk}"
-  hr
-}
+# Info plugins (skip any "*commands*" plugin; we print commands centrally)
+shopt -s nullglob
+for s in /usr/lib/sf2/banner.d/*.sh; do
+  case "$s" in
+    *commands*|*/70-commands.sh) continue ;;   # ignore commands plugin
+  esac
+  [ -x "$s" ] || continue
+  "$s" | sanitize_stream | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    printf " %s-%s %s\n" "$C_BUL" "$C_RST" "$line"
+  done
+done
 
-print_cmds() {
-  echo
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-config"          "${C_RST}" "${C_ACC}" "Toggle banner plugins"        "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-software"        "${C_RST}" "${C_ACC}" "Service/DB/DDNS/HTTPS menu"   "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-banner --update" "${C_RST}" "${C_ACC}" "Refresh banner + plugins"     "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "htop"                "${C_RST}" "${C_ACC}" "Resource monitor"              "${C_RST}"
-  printf "%s%-22s%s : %s%s%s\n" "${C_LABEL}" "cpu"                 "${C_RST}" "${C_ACC}" "CPU info & stats"              "${C_RST}"
-  hr
-}
-
-# --update: clone & install from GitHub
-if [[ "${1:-}" == "--update" ]]; then
-  set -e
-  REPO="${REPO_URL:-https://github.com/AirysDark/SourceForge-2.0-banner.git}"
-  DIR="/tmp/sf2-update"
-  command -v git >/dev/null 2>&1 || { sudo apt-get update -y >/dev/null 2>&1 || true; sudo apt-get install -y git >/dev/null 2>&1; }
-  rm -rf "$DIR"
-  git clone --depth 1 "$REPO" "$DIR"
-  if [ -f "$DIR/install-sf2-complete.sh" ]; then
-    sudo bash "$DIR/install-sf2-complete.sh"
-  fi
-  exec sf2-banner
-fi
-
-header_line
-print_info
-print_cmds
+# Divider and a clean commands block (no dash bullets)
+hr
+printf " sf2-config             : Toggle banner plugins\n"
+printf " sf2-software           : Service/DB/DDNS/HTTPS menu\n"
+printf " sf2-banner --update    : Refresh banner + plugins\n"
+printf " htop                   : Resource monitor\n"
+printf " cpu                    : CPU info & stats\n"
+hr
+BANNER
+sudo chmod 0755 /usr/local/bin/sf2-banner
