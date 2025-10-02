@@ -10,8 +10,5 @@ curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/ma
 ```
 install
 ```bash
-sudo bash -c 'set -e; rm -rf /tmp/sf2-src; \
-  apt-get update -y >/dev/null 2>&1 || true; apt-get install -y git >/dev/null 2>&1 || true; \
-  git clone --depth 1 https://github.com/AirysDark/SourceForge-2.0-banner.git /tmp/sf2-src; \
-  cd /tmp/sf2-src; bash install-sf2-complete.sh'
+curl -fsSL https://raw.githubusercontent.com/AirysDark/SourceForge-2.0-banner/main/install-sf2-complete.sh | sudo bash
 ```
