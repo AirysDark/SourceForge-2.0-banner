@@ -2,6 +2,15 @@
 # SourceForge 2.0 Banner — Uninstaller (incl. tty1 autologin & live dashboard cleanup)
 set -euo pipefail
 
+# Use sudo only when not already root
+SUDO=""
+if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+  if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else
+    echo "[SF2] ERROR: Need root privileges (install sudo or run as root)."
+    exit 1
+  fi
+fi
+
 say(){ printf '%s\n' "$*"; }
 
 say "──────────────────────────────────────────────"
@@ -9,67 +18,66 @@ say " Uninstalling SourceForge 2.0 Banner"
 say "──────────────────────────────────────────────"
 
 # ---------- Stop any live dashboard ----------
-# Best-effort: kill watch running sf2-banner
-pkill -f "watch -t -n .* sf2-banner" 2>/dev/null || true
+# Best-effort: kill watch running sf2-banner or sf2-live
+pkill -f 'watch -t -n .* /usr/local/bin/sf2-banner' 2>/dev/null || true
+pkill -f '/usr/local/bin/sf2-live' 2>/dev/null || true
 
 # ---------- Remove wrappers/real binaries ----------
-sudo rm -f /usr/local/bin/.sf2-config-real /usr/local/bin/.sf2-software-real || true
+$SUDO rm -f /usr/local/bin/.sf2-config-real /usr/local/bin/.sf2-software-real || true
 
 # ---------- Remove public commands ----------
-sudo rm -f /usr/local/bin/sf2-banner
-sudo rm -f /usr/local/bin/sf2-config
-sudo rm -f /usr/local/bin/sf2-software
-sudo rm -f /usr/local/bin/sf2-live
-sudo rm -f /usr/local/bin/cpu
+$SUDO rm -f /usr/local/bin/sf2-banner \
+             /usr/local/bin/sf2-config \
+             /usr/local/bin/sf2-software \
+             /usr/local/bin/sf2-live \
+             /usr/local/bin/cpu || true
 
 # ---------- Remove shared menu file if installed ----------
-sudo rm -f /usr/local/share/sf2/software-full.sh
+$SUDO rm -f /usr/local/share/sf2/software-full.sh || true
 
 # ---------- Remove MOTD and profile hooks ----------
-sudo rm -f /etc/update-motd.d/00-sf2-banner
-sudo rm -f /etc/profile.d/00-sf2-banner.sh
+$SUDO rm -f /etc/update-motd.d/00-sf2-banner /etc/profile.d/00-sf2-banner.sh || true
 
 # ---------- Remove plugins + colors ----------
-sudo rm -rf /usr/lib/sf2
+$SUDO rm -rf /usr/lib/sf2 || true
 
 # ---------- Revert tty1 autologin override (if present) ----------
 OVR_DIR="/etc/systemd/system/getty@tty1.service.d"
 OVR_FILE="$OVR_DIR/override.conf"
 if [ -f "$OVR_FILE" ]; then
-  sudo rm -f "$OVR_FILE"
-  # remove dir if empty
-  rmdir "$OVR_DIR" 2>/dev/null || true
-  sudo systemctl daemon-reload
-  sudo systemctl restart getty@tty1.service || true
+  $SUDO rm -f "$OVR_FILE"
+  $SUDO rmdir "$OVR_DIR" 2>/dev/null || true
+  if command -v systemctl >/dev/null 2>&1; then
+    $SUDO systemctl daemon-reload || true
+    $SUDO systemctl restart getty@tty1.service || true
+  fi
   say "Reverted tty1 autologin override."
 fi
 
 # ---------- Remove live dashboard autostart from bash_profile ----------
-# Target the invoking user (or fallback), and also root just in case
-CAND_USERS=()
-
-if [ "${SUDO_USER:-}" ]; then CAND_USERS+=("$SUDO_USER"); fi
-CAND_USERS+=("$(id -un)")
-CAND_USERS+=("root")
-
 clean_profile() {
   local user="$1"
   local home
-  home="$(getent passwd "$user" | cut -d: -f6)"
+  home="$(getent passwd "$user" | cut -d: -f6 || true)"
   [ -n "${home:-}" ] || home="/home/$user"
   local prof="$home/.bash_profile"
   if [ -f "$prof" ]; then
-    # Remove the exact SF2_LIVE_TTY1 snippet block if present
-    sudo sed -i '/^# --- SF2_LIVE_TTY1 ---$/,/^# --- SF2_LIVE_TTY1 ---$/d' "$prof" || true
-    # Fallback: remove legacy one-liner if any
-    sudo sed -i '\|/usr/local/bin/sf2-live|d' "$prof" || true
+    # Remove the exact SF2_LIVE_TTY1 block
+    $SUDO sed -i '/^# --- SF2_LIVE_TTY1 ---$/,/^# --- SF2_LIVE_TTY1 ---$/d' "$prof" || true
+    # Remove any legacy one-liners
+    $SUDO sed -i '\|/usr/local/bin/sf2-live|d' "$prof" || true
   fi
 }
 
-# Deduplicate users and clean
-DEDUP=""
-for u in "${CAND_USERS[@]}"; do
-  case " $DEDUP " in *" $u "*) : ;; *) DEDUP="$DEDUP $u"; clean_profile "$u";; esac
+# Try the invoking user, current uid, and root (deduped)
+declare -A SEEN=()
+for u in ${SUDO_USER:-}; do :; done   # no-op to avoid unbound
+for u in "${SUDO_USER:-}" "$(id -un)" root; do
+  [ -n "$u" ] || continue
+  if [ -z "${SEEN[$u]:-}" ]; then
+    SEEN[$u]=1
+    clean_profile "$u"
+  fi
 done
 
 say "──────────────────────────────────────────────"
