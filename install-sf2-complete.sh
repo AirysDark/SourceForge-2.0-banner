@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# SourceForge 2.0 Banner — Complete installer (blue labels + blue dashes, light-blue values)
-# Works from local OR via curl|bash; clones GitHub if needed.
+# SourceForge 2.0 Banner — Complete installer
+# Blue labels + blue dashes (bright blue), light-blue values, dark-blue lines
+# Works locally or clones GitHub if local files are missing.
 
 set -e -o pipefail
 SELF="${BASH_SOURCE[0]:-$0}"
@@ -31,7 +32,6 @@ for f in sf2-banner sf2-config usr/local/share/sf2/software-full.sh; do
   [ -e "$SCRIPT_DIR/$f" ] || need_any=1
 done
 if [ "$need_any" -eq 1 ]; then
-  # Ensure git, then clone
   if ! command -v git >/dev/null 2>&1; then
     sudo apt-get update -y >/dev/null 2>&1 || true
     sudo apt-get install -y git >/dev/null 2>&1
@@ -56,8 +56,8 @@ supports_256(){ tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
 if supports_256; then
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
   C_HEAD_TX=$'\e[38;5;195m'   # title
-  C_ACC=$'\e[38;5;81m'        # datetime
-  C_SEP=$'\e[38;5;24m'        # dark blue line
+  C_ACC=$'\e[38;5;81m'        # datetime (light blue)
+  C_SEP=$'\e[38;5;24m'        # horizontal lines (dark blue)
 else
   C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
   C_HEAD_TX=$'\e[96m'; C_ACC=$'\e[36m'; C_SEP=$'\e[34m'
@@ -119,18 +119,18 @@ if [ -f "$SCRIPT_DIR/usr/local/share/sf2/software-full.sh" ]; then
 fi
 
 ###############################################################################
-# 4) colors.sh (LEFT = dark blue dash + label; RIGHT = light blue value)
+# 4) colors.sh
+# Dash + label = bright blue (33); values = light blue (81); separators = dark blue (24)
 ###############################################################################
 sudo tee "$LIB/colors.sh" >/dev/null <<'COLORS'
 #!/bin/bash
-# Minimal palette consumed by plugins
 supports_256(){ tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
 if supports_256; then
   C_RST=$'\e[0m'
-  C_LABEL=$'\e[38;5;24m'    # dark blue (labels)
+  C_LABEL=$'\e[38;5;33m'    # bright blue (labels)
   C_VAL=$'\e[38;5;81m'      # light blue (values)
-  C_BUL=$'\e[38;5;24m'      # dark blue dash
-  C_SEP=$'\e[38;5;24m'      # dark blue separator line
+  C_BUL=$'\e[38;5;33m'      # bright blue dash (matches label)
+  C_SEP=$'\e[38;5;24m'      # dark blue line
 else
   C_RST=$'\e[0m'
   C_LABEL=$'\e[34m'
@@ -143,7 +143,7 @@ sudo chmod 0644 "$LIB/colors.sh"
 sudo chown root:root "$LIB/colors.sh"
 
 ###############################################################################
-# 5) Plugins (dash + label = dark blue, value = light blue; commands have NO dash)
+# 5) Plugins (dash + label = bright blue; value = light blue; commands have NO dash)
 ###############################################################################
 sudo tee "$PLUG_DIR/10-hostname.sh" >/dev/null <<'PLUG'
 #!/bin/bash
@@ -188,11 +188,11 @@ PLUG
 sudo tee "$PLUG_DIR/70-commands.sh" >/dev/null <<'PLUG'
 #!/bin/bash
 . /usr/lib/sf2/colors.sh
-# Blue separator above commands
+# Dark blue separator above commands
 cols=$(tput cols 2>/dev/null || echo 78)
 printf '%s%s%s\n' "${C_SEP}" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "${C_RST}"
 
-# NO dashes; aligned; command name = dark blue, description = light blue
+# NO dashes; aligned; command name (bright blue), description (light blue)
 printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-config"           "${C_RST}" "${C_VAL}" "Toggle banner plugins"        "${C_RST}"
 printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-software"         "${C_RST}" "${C_VAL}" "Service/DB/DDNS/HTTPS menu"   "${C_RST}"
 printf " %s%-22s%s : %s%s%s\n" "${C_LABEL}" "sf2-banner --update"  "${C_RST}" "${C_VAL}" "Refresh banner + plugins"     "${C_RST}"
