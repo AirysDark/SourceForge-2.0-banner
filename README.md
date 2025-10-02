@@ -24,3 +24,14 @@ ls -l /etc/profile.d/00-sf2-banner.sh
 sudo chmod +x /etc/update-motd.d/00-sf2-banner
 sudo chmod +x /etc/profile.d/00-sf2-banner.sh
 ```
+```bash
+sudo chmod -x /etc/update-motd.d/*
+sudo chmod +x /etc/update-motd.d/00-sf2-banner
+```
+```bash
+sudo tee /etc/update-motd.d/99-sf2-banner >/dev/null <<'EOF'
+#!/bin/sh
+[ -x /usr/local/bin/sf2-banner ] && /usr/local/bin/sf2-banner
+EOF
+sudo chmod +x /etc/update-motd.d/99-sf2-banner
+```
