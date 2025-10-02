@@ -1,21 +1,67 @@
-#!/bin/bash
-# SF2 Banner - Plugin based
-COLOUR_RESET='\e[0m'
-BLUE='\e[38;5;33m'
-WHITE='\e[97m'   # plain white for dash
+sudo tee /usr/local/bin/sf2-banner >/dev/null <<'BANNER'
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
-echo -e " SourceForge 2.0 Banner : $(date '+%H:%M - %a %d/%m/%y')"
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+# Colors
+supports_256(){ tput colors 2>/dev/null | awk '{exit !($1>=256)}'; }
+if supports_256; then
+  C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
+  C_HEAD_TX=$'\e[38;5;195m'  # header text
+  C_ACC=$'\e[38;5;81m'       # accent for datetime
+  C_SEP=$'\e[38;5;24m'       # blue hr
+  C_BUL=$'\e[97m'            # white bullet
+else
+  C_RST=$'\e[0m'; C_BOLD=$'\e[1m'
+  C_HEAD_TX=$'\e[96m'; C_ACC=$'\e[36m'; C_SEP=$'\e[34m'; C_BUL=$'\e[97m'
+fi
 
-# Run each plugin, prefix with a white dash
-for script in /usr/lib/sf2/banner.d/*.sh; do
-    if [ -x "$script" ]; then
-        # capture plugin output and prefix with dash
-        while IFS= read -r line; do
-            echo -e " ${WHITE}-${COLOUR_RESET} $line"
-        done < <("$script")
-    fi
+# ASCII hr
+hr(){ cols=$(tput cols 2>/dev/null || echo 78); printf '%s%s%s\n' "${C_SEP}" "$(printf '%*s' "$cols" '' | tr ' ' '-')" "${C_RST}"; }
+
+# Sanitize a plugin stream:
+# - expand "\n" -> real newlines
+# - remove CR
+# - strip one leading "- "
+# - drop plugin-drawn separators
+# - drop command lines (we print commands centrally)
+# - fix trailing stray 'n' (only if it follows numbers, %, or ')', or the word "minutes")
+sanitize_stream(){
+  sed -E \
+    -e 's/\\n/\n/g' \
+    -e 's/\r$//' \
+    -e 's/^[[:space:]]*-[[:space:]]*/ /' \
+    -e '/^[[:space:]]*[-─]{6,}[[:space:]]*$/d' \
+    -e '/^[[:space:]]*(sf2-config|sf2-software|sf2-banner([[:space:]]+--update)?|htop|cpu)([[:space:]]|:|$)/I d' \
+    -e 's/([0-9%\\)])n$/\1/' \
+    -e 's/(minutes)n$/\1/'
+}
+
+# Header
+dt="$(date '+%H:%M - %a %d/%m/%y')"
+hr
+printf " %sSourceForge 2.0 Banner%s : %s%s%s\n" "${C_HEAD_TX}${C_BOLD}" "${C_RST}" "${C_ACC}" "$dt" "${C_RST}"
+hr
+
+# Info plugins (skip any "*commands*" plugin; we print commands centrally)
+shopt -s nullglob
+for s in /usr/lib/sf2/banner.d/*.sh; do
+  case "$s" in
+    *commands*|*/70-commands.sh) continue ;;   # ignore commands plugin
+  esac
+  [ -x "$s" ] || continue
+  "$s" | sanitize_stream | while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    printf " %s-%s %s\n" "$C_BUL" "$C_RST" "$line"
+  done
 done
 
-echo -e " ${BLUE}──────────────────────────────────────────────${COLOUR_RESET}"
+# Divider and a clean commands block (no dash bullets)
+hr
+printf " sf2-config             : Toggle banner plugins\n"
+printf " sf2-software           : Service/DB/DDNS/HTTPS menu\n"
+printf " sf2-banner --update    : Refresh banner + plugins\n"
+printf " htop                   : Resource monitor\n"
+printf " cpu                    : CPU info & stats\n"
+hr
+BANNER
+sudo chmod 0755 /usr/local/bin/sf2-banner
