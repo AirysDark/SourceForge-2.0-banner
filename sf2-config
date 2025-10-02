@@ -1,3 +1,5 @@
+# In your repo root:
+tee sf2-config >/dev/null <<'CONF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -15,7 +17,7 @@ while :; do
   echo "Plugins in: $DIR"
   i=1
   declare -A MAP=()
-  # Sorted list (numeric order respected by filenames like 10-*, 20-*)
+  # Sorted list like 10-*.sh, 20-*.sh, ...
   while IFS= read -r -d '' f; do
     base="$(basename "$f")"
     if [ -x "$f" ]; then st="ENABLED"; else st="disabled"; fi
@@ -43,6 +45,8 @@ while :; do
 done
 
 # Auto-refresh banner on exit
-if command -v /usr/local/bin/sf2-banner >/dev/null 2>&1; then
+if command -v /usr/local/bin/sf2-banner >/devnull 2>&1; then
   /usr/local/bin/sf2-banner || true
 fi
+CONF
+chmod 0755 sf2-config
