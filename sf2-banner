@@ -62,4 +62,3 @@ printf "sudo sf2-banner --update    : Refresh banner + plugins\n"
 printf "sudo htop                   : Resource monitor\n"
 printf "sudo cpu                    : CPU info & stats\n"
 hr
-BANNER
