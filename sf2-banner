@@ -1,4 +1,3 @@
-sudo tee /usr/local/bin/sf2-banner >/dev/null <<'BANNER'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -64,4 +63,3 @@ printf " htop                   : Resource monitor\n"
 printf " cpu                    : CPU info & stats\n"
 hr
 BANNER
-sudo chmod 0755 /usr/local/bin/sf2-banner
